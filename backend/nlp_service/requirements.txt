@@ -1,0 +1,41 @@
+# FastAPI and web framework dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Pydantic for data validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Text processing and NLP libraries
+nltk==3.8.1
+spacy==3.7.2
+textblob==0.17.1
+
+# Core data processing
+numpy==1.24.3
+pandas==2.0.3
+
+# HTTP and networking
+httpx==0.25.2
+requests==2.31.0
+
+# Configuration and environment
+python-dotenv==1.0.0
+
+# Logging and monitoring
+structlog==23.2.0
+
+# Testing (optional for development)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Optional: Advanced NLP features (can be added later)
+# transformers==4.35.2
+# torch==2.1.1
+scikit-learn==1.3.2
+
+# For embeddings (fallback when BERT unavailable)
+sentence-transformers==2.2.2
+transformers==4.35.2
+torch==2.1.1 

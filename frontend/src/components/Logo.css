@@ -1,0 +1,125 @@
+.census-logo {
+  display: inline-block;
+  position: relative;
+}
+
+.census-logo svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(64, 224, 208, 0.3));
+}
+
+/* Base styles for all elements */
+.convergence-circle {
+  fill: none;
+  stroke: url(#gradientStroke);
+  stroke-width: 3;
+  stroke-dasharray: 0 267;
+}
+
+.dialogue-node {
+  fill: url(#nodeGradient);
+  opacity: 0.8;
+}
+
+.connection-line {
+  stroke: url(#connectionGradient);
+  stroke-width: 1.5;
+  opacity: 0.4;
+  stroke-dasharray: 3, 4;
+}
+
+.ai-core {
+  fill: url(#coreGradient);
+}
+
+/* Animation classes */
+.convergence-circle.animated {
+  animation: converge 3s ease-in-out infinite;
+}
+
+.dialogue-node.animated {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.dialogue-node.animated:nth-child(odd) {
+  animation-delay: 0.5s;
+}
+
+.connection-line.animated {
+  animation: flow 2s linear infinite;
+}
+
+.ai-core.animated {
+  animation: glow 3s ease-in-out infinite;
+}
+
+/* Animation keyframes */
+@keyframes converge {
+  0% { stroke-dasharray: 0 267; }
+  50% { stroke-dasharray: 133 134; }
+  100% { stroke-dasharray: 267 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 0.8; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.1); 
+  }
+}
+
+@keyframes flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 10; }
+}
+
+@keyframes glow {
+  0%, 100% { 
+    filter: brightness(1); 
+  }
+  50% { 
+    filter: brightness(1.3); 
+  }
+}
+
+/* Size variations */
+.census-logo.small {
+  filter: drop-shadow(0 0 10px rgba(64, 224, 208, 0.2));
+}
+
+.census-logo.medium {
+  filter: drop-shadow(0 0 15px rgba(64, 224, 208, 0.25));
+}
+
+.census-logo.large {
+  filter: drop-shadow(0 0 20px rgba(64, 224, 208, 0.3));
+}
+
+/* Hover effects */
+.census-logo:hover {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+.census-logo:hover .ai-core {
+  filter: brightness(1.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .census-logo.small {
+    filter: drop-shadow(0 0 8px rgba(64, 224, 208, 0.2));
+  }
+  
+  .census-logo.medium {
+    filter: drop-shadow(0 0 12px rgba(64, 224, 208, 0.25));
+  }
+  
+  .census-logo.large {
+    filter: drop-shadow(0 0 16px rgba(64, 224, 208, 0.3));
+  }
+} 

@@ -1,0 +1,398 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
+import EventDashboard from './components/EventDashboard';
+import EventDetails from './components/EventDetails';
+import DialogueRounds from './components/DialogueRounds';
+import UnifiedDashboard from './components/UnifiedDashboard';
+import LandingPage from './components/LandingPage';
+import SignIn from './components/SignIn';
+import Logo from './components/Logo';
+import EventWizard from './components/EventWizard';
+import './App.css';
+import { apiService } from './services/api';
+
+// Updated User interface to match TemporaryUser model
+interface User {
+  id: string;
+  display_name: string;
+  session_code: string;
+  created_at: string;
+}
+
+interface UserContextType {
+  user: User | null;
+  setUser: (user: User | null) => void;
+  loading: boolean;
+  showSignIn: boolean;
+  handleCreateSession: (displayName: string) => Promise<void>;
+  handleLogin: (sessionCode: string) => Promise<void>;
+  handleSignOut: () => void;
+}
+
+const UserContext = React.createContext<UserContextType | undefined>(undefined);
+
+export const useUser = () => {
+  const context = React.useContext(UserContext);
+  if (!context) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+};
+
+// User Provider Component
+const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSignIn, setShowSignIn] = useState(false);
+
+  useEffect(() => {
+    const loadUserFromSession = async () => {
+      const sessionCode = localStorage.getItem('session_code');
+      if (sessionCode) {
+        try {
+          const response = await apiService.loginWithSession(sessionCode);
+          // Check for specific error message to clear stale session codes
+          if (response.error && response.error.includes('not found')) {
+            localStorage.removeItem('session_code');
+            setUser(null);
+            console.error('Stale session code cleared:', response.error);
+          } else if (response.data) {
+            setUser(response.data);
+          } else if (response.error) {
+            console.error('Login failed:', response.error);
+          }
+        } catch (error) {
+          localStorage.removeItem('session_code');
+          setUser(null);
+          console.error('Failed to load user session:', error);
+        }
+      }
+      setLoading(false);
+    };
+    loadUserFromSession();
+  }, []);
+
+  const handleCreateSession = async (displayName: string) => {
+    try {
+      const res = await apiService.createSession(displayName);
+      if (res.data) {
+        localStorage.setItem('census_session_code', res.data.session_code);
+        setUser(res.data);
+        setShowSignIn(false);
+      }
+    } catch (error) {
+      console.error('Error creating session:', error);
+      // Optionally, handle the error in the UI
+    }
+  };
+
+  const handleLogin = async (sessionCode: string) => {
+    try {
+      const res = await apiService.loginWithSession(sessionCode);
+      if (res.data) {
+        localStorage.setItem('census_session_code', res.data.session_code);
+        setUser(res.data);
+        setShowSignIn(false);
+      }
+    } catch (error) {
+      console.error('Error logging in with session:', error);
+      // Optionally, handle the error in the UI, e.g., show "Invalid code"
+      throw error;
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('census_session_code');
+    setUser(null);
+    setShowSignIn(true);
+  };
+
+  return (
+    <UserContext.Provider value={{ user, setUser, loading, showSignIn, handleCreateSession, handleLogin, handleSignOut }}>
+      {children}
+    </UserContext.Provider>
+  );
+};
+
+// Navigation Component
+const Navigation: React.FC = () => {
+  const { user, handleSignOut } = useUser();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <nav className="app-navigation">
+      <div className="nav-brand">
+        <div className="nav-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+          <Logo size="small" animated={false} />
+        </div>
+        <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>CENSUS</h2>
+      </div>
+      <div className="nav-links">
+        <button 
+          className={isActive('/') ? 'nav-link active' : 'nav-link'}
+          onClick={() => navigate('/')}
+        >
+          Home
+        </button>
+        <button 
+          className={isActive('/events') ? 'nav-link active' : 'nav-link'}
+          onClick={() => navigate('/events')}
+        >
+          Events
+        </button>
+      </div>
+      <div className="nav-user">
+        <span className="user-role">{user ? 'user' : 'anonymous'}</span>
+        <span className="user-name">{user?.display_name || 'Anonymous'}</span>
+        <button className="nav-signout" onClick={handleSignOut}>
+          Sign Out
+        </button>
+      </div>
+    </nav>
+  );
+};
+
+// Route Components
+const LandingRoute: React.FC = () => {
+  const navigate = useNavigate();
+  return <LandingPage onGetStarted={() => navigate('/events')} />;
+};
+
+const EventsRoute: React.FC = () => {
+  const { user } = useUser();
+  const navigate = useNavigate();
+
+  const handleEventSelect = (eventId: string, action: 'view' | 'participate' | 'dialogue') => {
+    if (action === 'participate') {
+      navigate(`/participate/${eventId}`);
+    } else if (action === 'view') {
+      navigate(`/events/${eventId}`);
+    } else if (action === 'dialogue') {
+      navigate(`/dialogue/${eventId}`);
+    }
+  };
+
+  const handleCreateEvent = () => {
+    // Navigate to the event creation form
+    // This route will need to be created
+    navigate('/events/new');
+  };
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        {user ? (
+          <UnifiedDashboard 
+            onEventSelect={handleEventSelect} 
+            onCreateEvent={handleCreateEvent}
+          />
+        ) : (
+          <div>Please sign in to see events.</div>
+        )}
+      </div>
+    </>
+  );
+};
+
+const EventDetailsRoute: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  const { user } = useUser();
+  const navigate = useNavigate();
+
+  if (!eventId) return <Navigate to="/events" />;
+
+  const handleNavigateToParticipate = (eventId: string) => {
+    navigate(`/participate/${eventId}`);
+  };
+
+  const handleNavigateToResults = (eventId: string) => {
+    navigate(`/results/${eventId}`);
+  };
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        <EventDetails
+          eventId={eventId}
+          userRole={user ? 'user' : 'anonymous'}
+          onBack={() => navigate('/events')}
+          onParticipate={() => navigate(`/participate/${eventId}`)}
+          onStartDialogue={() => navigate(`/dialogue/${eventId}`)}
+          onNavigateToParticipate={handleNavigateToParticipate}
+          onNavigateToResults={handleNavigateToResults}
+        />
+      </div>
+    </>
+  );
+};
+
+const ParticipateRoute: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
+
+  if (!eventId) return <Navigate to="/events" />;
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        <DialogueRounds
+          eventId={eventId}
+          onComplete={() => navigate(`/results/${eventId}`)}
+          onBack={() => navigate(`/events/${eventId}`)}
+        />
+      </div>
+    </>
+  );
+};
+
+const DialogueRoute: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
+
+  if (!eventId) return <Navigate to="/events" />;
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        <DialogueRounds
+          eventId={eventId}
+          onComplete={() => {
+            alert('Dialogue completed! Thank you for participating.');
+            navigate('/events');
+          }}
+          onBack={() => navigate(`/events/${eventId}`)}
+        />
+      </div>
+    </>
+  );
+};
+
+const ResultsRoute: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
+
+  if (!eventId) return <Navigate to="/events" />;
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        <div className="results-view">
+          <div className="results-header">
+            <button className="back-button" onClick={() => navigate(`/events/${eventId}`)}>
+              ← Back to Event Details
+            </button>
+            <h1>Event Results</h1>
+          </div>
+          <div className="results-content">
+            <p>Results for event: {eventId}</p>
+            <p>This view would show comprehensive analysis and results from all rounds.</p>
+            <p>Coming soon: Interactive visualizations and detailed insights.</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+const CreateEventRoute: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (eventData: any) => {
+    if (!user) {
+      setError("User not found, cannot create event. Please sign in again.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const payload = { ...eventData, session_code: user.session_code };
+      await apiService.createEvent(payload);
+      navigate('/events');
+    } catch (err) {
+      setError('Failed to create event. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        {error && <div className="error-message">{error}</div>}
+        <EventWizard 
+          onSubmit={handleSubmit} 
+          isLoading={isLoading}
+          onCancel={() => navigate('/events')}
+        />
+      </div>
+    </>
+  );
+};
+
+// Loading Component
+const LoadingScreen: React.FC = () => (
+  <div className="loading-screen">
+    <div className="loading-spinner"></div>
+    <p>Loading Census...</p>
+  </div>
+);
+
+// Main App Component
+function App() {
+  return (
+    <UserProvider>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AppContent />
+      </Router>
+    </UserProvider>
+  );
+}
+
+const AppContent: React.FC = () => {
+  const { user, loading, showSignIn, handleCreateSession, handleLogin } = useUser();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (showSignIn || !user) {
+    return <SignIn onCreateSession={handleCreateSession} onLogin={handleLogin} onBack={() => {}} />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<LandingRoute />} />
+      <Route path="/events" element={<EventsRoute />} />
+      <Route path="/events/new" element={<CreateEventRoute />} />
+      <Route path="/events/:eventId" element={<EventDetailsRoute />} />
+      <Route path="/participate/:eventId" element={<ParticipateRoute />} />
+      <Route path="/dialogue/:eventId" element={<DialogueRoute />} />
+      <Route path="/results/:eventId" element={<ResultsRoute />} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+const DialogueRoundsWrapper: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
+  if (!eventId) {
+    return <p>Event not found.</p>;
+  }
+  return <DialogueRounds eventId={eventId} onBack={() => navigate('/')} onComplete={() => navigate(`/results/${eventId}`)} />;
+};
+
+export default App; 

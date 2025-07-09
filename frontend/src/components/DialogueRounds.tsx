@@ -1,0 +1,520 @@
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../services/api';
+import './DialogueRounds.css';
+
+interface Inquiry {
+  id: string;
+  question_text: string;
+  description: string;
+  response_type: string;
+  is_required: boolean;
+  order_index: number;
+}
+
+interface RoundAnalysis {
+  round_number: number;
+  summary: string;
+  key_themes: string[];
+  consensus_points: string[];
+  dialogue_opportunities: string[];
+  participant_count: number;
+  created_at: string;
+  analysis?: any;
+  next_round_prompts?: string[]; // Added for new prompts
+}
+
+interface DialogueRoundsProps {
+  eventId: string;
+  onComplete: () => void;
+  onBack: () => void;
+  isAdmin?: boolean; // Simulate admin for now
+}
+
+const DialogueRounds: React.FC<DialogueRoundsProps> = ({ 
+  eventId, 
+  onComplete, 
+  onBack,
+  isAdmin = false
+}) => {
+  const [currentRound, setCurrentRound] = useState(1);
+  const [roundStatus, setRoundStatus] = useState<'open' | 'waiting_for_analysis' | 'completed'>('open');
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [roundAnalyses, setRoundAnalyses] = useState<RoundAnalysis[]>([]);
+  const [responses, setResponses] = useState<{[key: string]: string}>({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [feedback, setFeedback] = useState<string>('');
+  const [pollInterval, setPollInterval] = useState<any>(null);
+
+  console.log(
+    '[DialogueRounds Render] EventID:', eventId, 
+    '| Status:', roundStatus, 
+    '| Loading:', loading, 
+    '| Error:', error, 
+    '| Inquiries:', inquiries?.length
+  );
+
+  // Poll round state
+  const fetchRoundState = async () => {
+    try {
+      console.log('[DialogueRounds fetchRoundState] Fetching state for event:', eventId);
+      const res = await fetch(`/api/v1/events/${eventId}/round-state`);
+      if (!res.ok) {
+        throw new Error(`Round state fetch failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('[DialogueRounds fetchRoundState] API Response:', data);
+      if (data.round_state) {
+        setCurrentRound(data.round_state.current_round);
+        setRoundStatus(data.round_state.status);
+      }
+    } catch (err) {
+      console.error('[DialogueRounds fetchRoundState] Error:', err);
+      setError('Failed to fetch round state.');
+    }
+  };
+
+  // Poll every 2 seconds
+  useEffect(() => {
+    fetchRoundState();
+    if (pollInterval) clearInterval(pollInterval);
+    const interval = setInterval(fetchRoundState, 2000);
+    setPollInterval(interval);
+    return () => clearInterval(interval);
+  }, [eventId]);
+
+  const fetchEventData = async () => {
+    if (!eventId) return;
+    setLoading(true);
+    console.log('[DialogueRounds fetchEventData] Fetching data for event:', eventId);
+    try {
+      // Fetch event details
+      const eventResponse = await apiService.getEvent(eventId);
+      console.log('[DialogueRounds fetchEventData] getEvent response:', eventResponse);
+      if (eventResponse.error) {
+        setError(eventResponse.error);
+        return;
+      }
+      setEventDetails(eventResponse.data);
+
+      // Fetch inquiries for the event
+      const inquiriesResponse = await apiService.getEventInquiries(eventId);
+      console.log('[DialogueRounds fetchEventData] getEventInquiries response:', inquiriesResponse);
+      if (inquiriesResponse.error) {
+        setError(inquiriesResponse.error);
+        return;
+      }
+      setInquiries(inquiriesResponse.data || []);
+
+      if (currentRound > 1) {
+        const roundResultsResponse = await apiService.getEventRoundResults(eventId, currentRound - 1);
+        console.log('[DialogueRounds fetchEventData] getEventRoundResults response:', roundResultsResponse);
+        if (roundResultsResponse && roundResultsResponse.data) {
+          setRoundAnalyses(roundResultsResponse.data as RoundAnalysis[]);
+        } else {
+          console.log('No round analyses found:', roundResultsResponse.error);
+        }
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('[DialogueRounds fetchEventData] Error:', err);
+      setError('Failed to load event data');
+      console.error('Error fetching event data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResponseChange = (inquiryId: string, value: string) => {
+    setResponses(prev => ({
+      ...prev,
+      [inquiryId]: value
+    }));
+  };
+
+  const submitRoundResponses = async () => {
+    if (Object.keys(responses).length > 0) {
+      setSubmitting(true);
+      try {
+        const sessionCode = localStorage.getItem('census_session_code');
+        if (!sessionCode) {
+          setError('No active session. Please log in again.');
+          setSubmitting(false);
+          return;
+        }
+
+        const responsesToSubmit = Object.entries(responses).map(([inquiryId, responseText]) => ({
+          inquiry_id: inquiryId,
+          content: responseText,
+          round_number: currentRound,
+          is_anonymous: false,
+        }));
+
+        const result = await apiService.submitRoundResponses(responsesToSubmit);
+        
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        setResponses({});
+        setError(null);
+      } catch (err) {
+        setError('Failed to submit responses');
+        console.error('Error submitting responses:', err);
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const analyzeRound = async () => {
+    setAnalyzing(true);
+    try {
+      const analysisResponse = await apiService.analyzeEventRound(eventId, currentRound);
+      if (analysisResponse.error) {
+        setError(analysisResponse.error);
+        return;
+      }
+      // Add the new round analysis
+      const newAnalysis: RoundAnalysis = {
+        round_number: currentRound,
+        summary: analysisResponse.data.analysis?.summary || `Round ${currentRound} analysis`,
+        key_themes: analysisResponse.data.analysis?.key_themes || [],
+        consensus_points: analysisResponse.data.analysis?.consensus_points || [],
+        dialogue_opportunities: analysisResponse.data.analysis?.dialogue_opportunities || [],
+        participant_count: analysisResponse.data.response_count || 0,
+        created_at: analysisResponse.data.timestamp || new Date().toISOString(),
+        analysis: analysisResponse.data.analysis,
+        next_round_prompts: analysisResponse.data.next_round_prompts || [] // Add next_round_prompts
+      };
+      setRoundAnalyses(prev => [...prev, newAnalysis]);
+      setError(null);
+    } catch (err) {
+      setError('Error analyzing round');
+      console.error('Error analyzing round:', err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const submitFeedback = async (inquiryId: string) => {
+    if (!feedback.trim()) return;
+    try {
+      const feedbackResponse = await apiService.submitRoundResponses([{
+        inquiry_id: inquiryId,
+        content: feedback,
+        is_anonymous: false,
+        round_number: currentRound
+      }]);
+      if (feedbackResponse.error) {
+        setError(feedbackResponse.error);
+        return;
+      }
+      setFeedback('');
+      alert('Feedback submitted successfully!');
+    } catch (err) {
+      setError('Error submitting feedback');
+      console.error('Error submitting feedback:', err);
+    }
+  };
+
+  const advanceRound = async () => {
+    try {
+      await fetch(`/api/v1/events/${eventId}/advance-round`, { method: 'POST' });
+      await fetchRoundState();
+      setResponses({});
+      setFeedback('');
+      setError(null);
+    } catch (err) {
+      setError('Error advancing round');
+    }
+  };
+
+  useEffect(() => {
+    fetchEventData();
+  }, [eventId]);
+
+  // --- UX POLISH & JOURNEY REFACTOR START ---
+  // 1. Persist round and responses in localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`census_dialogue_${eventId}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setCurrentRound(parsed.currentRound || 1);
+      setResponses(parsed.responses || {});
+    }
+  }, [eventId]);
+  useEffect(() => {
+    localStorage.setItem(
+      `census_dialogue_${eventId}`,
+      JSON.stringify({ currentRound, responses })
+    );
+  }, [eventId, currentRound, responses]);
+  // 2. Add banners/instructions for each step
+  const getBanner = () => {
+    if (roundStatus === 'open') {
+      return currentRound === 1
+        ? 'Welcome! Please share your initial thoughts on these questions.'
+        : 'Reflect on the group’s key themes and respond to the new prompts.';
+    }
+    if (roundStatus === 'waiting_for_analysis') {
+      return 'Thank you! Your responses are in. Waiting for AI analysis and admin action...';
+    }
+    if (roundStatus === 'completed') {
+      return 'Dialogue complete! Thank you for your participation.';
+    }
+    return '';
+  };
+  // 3. Highlight dialogue prompts in analysis
+  const currentAnalysis = roundAnalyses.find(analysis => analysis.round_number === currentRound - 1);
+  const isLastRound = currentRound === 3;
+  // 4. Add a visual progress bar/stepper
+  const renderProgress = () => (
+    <div className="progress-indicator">
+      {[1, 2, 3].map(round => (
+        <div 
+          key={round}
+          className={`progress-step ${round <= currentRound ? 'active' : ''} ${round < currentRound ? 'completed' : ''}`}
+        >
+          {round < currentRound ? '✓' : round}
+        </div>
+      ))}
+    </div>
+  );
+  // 5. Auto-transition from waiting to open/completed
+  useEffect(() => {
+    if (roundStatus === 'waiting_for_analysis') {
+      const interval = setInterval(fetchRoundState, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [roundStatus]);
+  // --- UX POLISH & JOURNEY REFACTOR END ---
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading dialogue session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !eventDetails) {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="error-state">
+          <h3>Error Loading Dialogue</h3>
+          <p>{typeof error === 'string' ? error : JSON.stringify(error, null, 2) || 'Event not found'}</p>
+          <button className="btn-primary" onClick={onBack}>
+            Back to Event Details
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Participant view: show questions if round is open
+  if (roundStatus === 'open') {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="rounds-header">
+          <button className="back-button" onClick={onBack}>
+            ← Back to Event
+          </button>
+          <div className="rounds-progress">
+            <h1>Dialogue Round {currentRound}</h1>
+            {renderProgress()}
+          </div>
+        </div>
+        <div className="dialogue-content">
+          <div className="banner">
+            <p>{getBanner()}</p>
+          </div>
+          
+          {/* Show previous round analysis for context */}
+          {currentRound > 1 && currentAnalysis && (
+            <div className="analysis-dashboard">
+              <h2>📊 Insights from Round {currentRound - 1}</h2>
+              <div className="analysis-grid">
+                <div className="analysis-card">
+                  <h3>🎯 Key Themes</h3>
+                  <ul>
+                    {currentAnalysis.key_themes.map((theme, index) => (
+                      <li key={index}>{theme}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="analysis-card">
+                  <h3>🤝 Areas of Agreement</h3>
+                  <ul>
+                    {currentAnalysis.consensus_points.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="analysis-card">
+                  <h3>💡 Next Steps</h3>
+                  <ul>
+                    {currentAnalysis.dialogue_opportunities.map((opportunity, index) => (
+                      <li key={index}>{opportunity}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              {/* Dialogue prompts for this round */}
+              {currentAnalysis.next_round_prompts && currentAnalysis.next_round_prompts.length > 0 && (
+                <div className="next-round-prompts">
+                  <h3>🗣️ Focus Areas for This Round</h3>
+                  <ul>
+                    {currentAnalysis.next_round_prompts.map((prompt: string, idx: number) => (
+                      <li key={idx} className="dialogue-prompt">{prompt}</li>
+                    ))}
+                  </ul>
+                  <p className="prompt-instructions">Please consider these focus areas as you respond to help move the discussion toward consensus.</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Current round questions */}
+          <div className="current-round-questions">
+            <h2>Your Responses for Round {currentRound}</h2>
+            <p className="round-instructions">
+              {currentRound === 1 
+                ? "Please share your initial thoughts on these questions. Be as detailed as you'd like."
+                : "Based on the group's insights, please provide additional perspectives or respond to the emerging themes."
+              }
+            </p>
+            <div className="questions-list">
+              {inquiries.map((inquiry, index) => (
+                <div key={inquiry.id} className="question-card">
+                  <div className="question-header">
+                    <span className="question-number">Q{index + 1}</span>
+                    <h3>{inquiry.question_text}</h3>
+                  </div>
+                  <p className="question-content">{inquiry.description}</p>
+                  <div className="response-input">
+                    <textarea
+                      value={responses[inquiry.id] || ''}
+                      onChange={(e) => handleResponseChange(inquiry.id, e.target.value)}
+                      placeholder="Share your thoughts here..."
+                      rows={4}
+                      className="response-textarea"
+                      required={inquiry.is_required}
+                    />
+                    <div className="response-counter">
+                      {responses[inquiry.id]?.length || 0} characters
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="rounds-actions">
+            <button 
+              className="btn-secondary"
+              onClick={onBack}
+              disabled={submitting || analyzing}
+            >
+              Save & Exit
+            </button>
+            <button 
+              className="btn-primary"
+              onClick={submitRoundResponses}
+              disabled={submitting || analyzing || !inquiries.every(inq => responses[inq.id]?.trim())}
+            >
+              {submitting ? 'Submitting...' : 'Submit Responses'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Waiting for analysis/admin
+  if (roundStatus === 'waiting_for_analysis') {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="rounds-header">
+          <button className="back-button" onClick={onBack}>
+            ← Back to Event
+          </button>
+          <div className="rounds-progress">
+            <h1>Dialogue Round {currentRound}</h1>
+            {renderProgress()}
+          </div>
+        </div>
+        <div className="dialogue-content">
+          <div className="banner">
+            <p>{getBanner()}</p>
+          </div>
+          <div className="waiting-state">
+            <div className="waiting-icon">⏳</div>
+            <h2>Processing Your Responses</h2>
+            <p>Thank you for your participation! The AI is analyzing all responses to identify key themes and areas of agreement.</p>
+            <div className="waiting-details">
+              <p><strong>What happens next:</strong></p>
+              <ul>
+                <li>AI analysis of all participant responses</li>
+                <li>Identification of key themes and consensus points</li>
+                <li>Generation of focus areas for the next round</li>
+                <li>Preparation of the next round of questions</li>
+              </ul>
+            </div>
+            <p className="waiting-note">This page will automatically update when the next round is ready.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Completed
+  if (roundStatus === 'completed') {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="rounds-header">
+          <button className="back-button" onClick={onBack}>
+            ← Back to Event
+          </button>
+          <div className="rounds-progress">
+            <h1>Dialogue Completed</h1>
+          </div>
+        </div>
+        <div className="dialogue-content">
+          <div className="banner">
+            <p>{getBanner()}</p>
+          </div>
+          <h2>Thank you for participating!</h2>
+          <p>The dialogue session is now complete. You can review the results and analysis in the event results dashboard.</p>
+          <button className="btn-primary" onClick={onComplete}>
+            Go to Results
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+export default DialogueRounds; 

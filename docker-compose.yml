@@ -1,0 +1,320 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: census-postgres
+    environment:
+      POSTGRES_DB: census
+      POSTGRES_USER: census_user
+      POSTGRES_PASSWORD: census_password
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - census-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U census_user -d census"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache and Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: census-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - census-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Neo4j Graph Database
+  neo4j:
+    image: neo4j:5.14-community
+    container_name: census-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/census_password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - census-network
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "census_password", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Chroma Vector Database
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: census-chroma
+    ports:
+      - "8900:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      CHROMA_SERVER_HTTP_PORT: 8000
+    networks:
+      - census-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: census-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://census_user:census_password@postgres:5432/census
+      REDIS_URL: redis://redis:6379
+      NEO4J_URL: bolt://neo4j:census_password@neo4j:7687
+      CHROMA_URL: http://chroma:8000
+      ENVIRONMENT: development
+      DEBUG: "true"
+    volumes:
+      - ./backend/api-gateway:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - census-network
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    container_name: census-auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://census_user:census_password@postgres:5432/census
+      REDIS_URL: redis://redis:6379
+      ENVIRONMENT: development
+      DEBUG: "true"
+    volumes:
+      - ./backend/auth-service:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - census-network
+    restart: unless-stopped
+
+  # Event Service
+  event-service:
+    build:
+      context: ./backend/event-service
+      dockerfile: Dockerfile
+    container_name: census-event-service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql://census_user:census_password@postgres:5432/census
+      REDIS_URL: redis://redis:6379
+      NEO4J_URL: bolt://neo4j:census_password@neo4j:7687
+      ENVIRONMENT: development
+      DEBUG: "true"
+    volumes:
+      - ./backend/event-service:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    networks:
+      - census-network
+    restart: unless-stopped
+
+  # NLP Service
+  nlp-service:
+    build:
+      context: ./backend/nlp-service
+      dockerfile: Dockerfile
+    container_name: census-nlp-service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: postgresql://census_user:census_password@postgres:5432/census
+      REDIS_URL: redis://redis:6379
+      CHROMA_URL: http://chroma:8000
+      ENVIRONMENT: development
+      DEBUG: "true"
+    volumes:
+      - ./backend/nlp-service:/app
+      - ./backend/shared:/app/shared
+      - nlp_models:/app/models  # For caching ML models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chroma:
+        condition: service_healthy
+    networks:
+      - census-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          memory: 2G
+        limits:
+          memory: 4G
+
+  # Profile Service
+  profile-service:
+    build:
+      context: ./backend/profile-service
+      dockerfile: Dockerfile
+    container_name: census-profile-service
+    ports:
+      - "8004:8004"
+    environment:
+      DATABASE_URL: postgresql://census_user:census_password@postgres:5432/census
+      REDIS_URL: redis://redis:6379
+      CHROMA_URL: http://chroma:8000
+      NEO4J_URL: bolt://neo4j:census_password@neo4j:7687
+      ENVIRONMENT: development
+      DEBUG: "true"
+    volumes:
+      - ./backend/profile-service:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chroma:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    networks:
+      - census-network
+    restart: unless-stopped
+
+  # Frontend Development Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: census-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_WS_URL: ws://localhost:8000
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - census-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: census-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - census-network
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: census-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - census-network
+    depends_on:
+      - prometheus
+
+  # MinIO for file storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: census-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - census-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  chroma_data:
+  nlp_models:
+  prometheus_data:
+  grafana_data:
+  minio_data:
+
+networks:
+  census-network:
+    driver: bridge 
