@@ -123,8 +123,21 @@ const Navigation: React.FC = () => {
   const { user, handleSignOut } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
+  const [copiedSessionCode, setCopiedSessionCode] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+
+  const copySessionCode = async () => {
+    if (!user?.session_code) return;
+    
+    try {
+      await navigator.clipboard.writeText(user.session_code);
+      setCopiedSessionCode(true);
+      setTimeout(() => setCopiedSessionCode(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy session code:', err);
+    }
+  };
 
   return (
     <nav className="app-navigation">
@@ -136,13 +149,13 @@ const Navigation: React.FC = () => {
       </div>
       <div className="nav-links">
         <button 
-          className={isActive('/') ? 'nav-link active' : 'nav-link'}
+          className={isActive('/') ? 'btn btn-secondary nav-link active' : 'btn btn-secondary nav-link'}
           onClick={() => navigate('/')}
         >
           Home
         </button>
         <button 
-          className={isActive('/events') ? 'nav-link active' : 'nav-link'}
+          className={isActive('/events') ? 'btn btn-secondary nav-link active' : 'btn btn-secondary nav-link'}
           onClick={() => navigate('/events')}
         >
           Events
@@ -151,6 +164,15 @@ const Navigation: React.FC = () => {
       <div className="nav-user">
         <span className="user-role">{user ? 'user' : 'anonymous'}</span>
         <span className="user-name">{user?.display_name || 'Anonymous'}</span>
+        {user?.session_code && (
+          <button 
+            className="btn btn-secondary btn-sm session-code-btn"
+            onClick={copySessionCode}
+            title="Click to copy your session code"
+          >
+            {copiedSessionCode ? '✓ Copied!' : `📋 ${user.session_code.substring(0, 8)}...`}
+          </button>
+        )}
         <button className="btn btn-secondary btn-sm" onClick={handleSignOut}>
           Sign Out
         </button>
@@ -375,6 +397,29 @@ function App() {
 const AppContent: React.FC = () => {
   const { user, loading, showSignIn, handleCreateSession, handleLogin } = useUser();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to dashboard if they're not on a valid route
+  useEffect(() => {
+    if (user && !loading) {
+      // Define routes that are safe to stay on after authentication
+      const safeRoutes = ['/', '/events', '/events/new', '/templates'];
+      const isOnEventRoute = location.pathname.startsWith('/events/') && location.pathname !== '/events/new';
+      const isOnParticipateRoute = location.pathname.startsWith('/participate/');
+      const isOnDialogueRoute = location.pathname.startsWith('/dialogue/');
+      const isOnResultsRoute = location.pathname.startsWith('/results/');
+      
+      // If user is on a specific event-related route, let them stay
+      // Otherwise, redirect to dashboard
+      if (!safeRoutes.includes(location.pathname) && 
+          !isOnEventRoute && 
+          !isOnParticipateRoute && 
+          !isOnDialogueRoute && 
+          !isOnResultsRoute) {
+        navigate('/events');
+      }
+    }
+  }, [user, loading, location.pathname, navigate]);
 
   if (loading) {
     return <LoadingScreen />;

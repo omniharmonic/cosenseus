@@ -1,5 +1,5 @@
 .unified-dashboard {
-  padding: var(--spacing-unit-4) var(--spacing-unit-5);
+  padding: var(--spacing-unit-5) var(--spacing-unit-6);
   background-color: transparent; /* Inherits from .App */
   width: 100%;
   max-width: 1300px;
@@ -10,7 +10,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-unit-3);
+  margin-bottom: var(--spacing-unit-5);
 }
 
 .dashboard-header h1 {
@@ -22,7 +22,7 @@
 .dashboard-tabs {
   display: flex;
   border-bottom: 1px solid var(--border-color-dark);
-  margin-bottom: var(--spacing-unit-5);
+  margin-bottom: var(--spacing-unit-6);
 }
 
 .dashboard-tabs .tab-button {
@@ -48,14 +48,14 @@
 .event-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--spacing-unit-4);
+  gap: var(--spacing-unit-5);
 }
 
 .event-card {
   background-color: var(--card-background-color-dark);
   border: 1px solid var(--border-color-dark);
   border-radius: var(--border-radius-large);
-  padding: var(--spacing-unit-3);
+  padding: var(--spacing-unit-4);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-small);
@@ -84,7 +84,7 @@
 }
 
 .event-footer {
-  margin-top: var(--spacing-unit-3);
+  margin-top: var(--spacing-unit-4);
   padding-top: var(--spacing-unit-3);
   border-top: 1px solid var(--border-color-dark);
   display: flex;
@@ -132,7 +132,7 @@
 
 .event-actions {
   display: flex;
-  gap: var(--spacing-unit-2);
+  gap: var(--spacing-unit-3);
 }
 /* Re-using button styles from index.css, but can add specific overrides here */
 .create-event-btn {
@@ -148,4 +148,12 @@
   padding: var(--spacing-unit-3);
   border-radius: var(--border-radius-medium);
   text-align: center;
+}
+
+/* Admin header with better button spacing */
+.admin-header {
+  display: flex;
+  gap: var(--spacing-unit-3);
+  margin-bottom: var(--spacing-unit-5);
+  justify-content: flex-end;
 } 

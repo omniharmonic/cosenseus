@@ -19,12 +19,12 @@ const ResponseClusterMap: React.FC<ResponseClusterMapProps> = ({ eventId }) => {
       try {
         // 1. Fetch all responses for the event
         const respRes = await apiService.getEventResponses(eventId);
-        if (respRes.error || !respRes.data || !respRes.data.responses) {
+        if (respRes.error || !respRes.data || !Array.isArray(respRes.data)) {
           setError(respRes.error || 'No responses found');
           setLoading(false);
           return;
         }
-        const responses = respRes.data.responses.map((r: any) => r.content);
+        const responses = respRes.data.map((r: any) => r.content);
         if (responses.length === 0) {
           setError('No responses to cluster');
           setLoading(false);
@@ -64,18 +64,33 @@ const ResponseClusterMap: React.FC<ResponseClusterMapProps> = ({ eventId }) => {
   }));
 
   return (
-    <div>
+    <div style={{ width: '100%', minHeight: 300, padding: 16 }}>
       <h3>Response Cluster Map</h3>
       <Plot
         data={traces}
         layout={{
-          width: 600,
-          height: 400,
+          autosize: true,
+          margin: { l: 50, r: 50, t: 50, b: 100 },
           title: 'Clusters of Participant Responses',
           xaxis: { title: 'Dimension 1' },
           yaxis: { title: 'Dimension 2' },
-          legend: { orientation: 'h' },
+          legend: { 
+            orientation: 'h',
+            x: 0.5,
+            xanchor: 'center',
+            y: -0.2
+          },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'transparent',
+          font: { color: '#F2F2F7' }
         }}
+        config={{ 
+          responsive: true,
+          displayModeBar: false,
+          staticPlot: false
+        }}
+        useResizeHandler={true}
+        style={{ width: '100%', height: '100%' }}
       />
     </div>
   );

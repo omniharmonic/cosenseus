@@ -9,6 +9,21 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Override global heading styles for light background */
+.dialogue-moderation-container h1,
+.dialogue-moderation-container h2,
+.dialogue-moderation-container h3,
+.dialogue-moderation-container h4,
+.dialogue-moderation-container h5,
+.dialogue-moderation-container h6 {
+  color: #333 !important;
+}
+
+/* Override global paragraph styles for light background */
+.dialogue-moderation-container p {
+  color: #666 !important;
+}
+
 .moderation-title {
   text-align: center;
   color: #333;

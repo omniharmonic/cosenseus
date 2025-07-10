@@ -1,14 +1,14 @@
 .dashboard-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--spacing-unit-5);
+  padding: var(--spacing-unit-6);
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--spacing-unit-4);
+  margin-bottom: var(--spacing-unit-5);
   padding-bottom: var(--spacing-unit-4);
   border-bottom: 1px solid var(--border-color-dark);
 }
@@ -49,8 +49,8 @@
 
 .dashboard-controls {
   display: flex;
-  gap: var(--spacing-unit-3);
-  margin-bottom: var(--spacing-unit-4);
+  gap: var(--spacing-unit-4);
+  margin-bottom: var(--spacing-unit-5);
   align-items: center;
 }
 
@@ -59,14 +59,14 @@
 .events-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--spacing-unit-4);
+  gap: var(--spacing-unit-5);
 }
 
 .event-card {
   background: var(--card-background-color-dark);
   border: 1px solid var(--border-color-dark);
   border-radius: var(--border-radius-large);
-  padding: var(--spacing-unit-3);
+  padding: var(--spacing-unit-4);
   transition: all 0.3s ease;
   box-shadow: var(--shadow-small);
   display: flex;
@@ -139,7 +139,7 @@
 
 .event-actions {
   display: flex;
-  gap: var(--spacing-unit);
+  gap: var(--spacing-unit-2);
 }
 
 /* action-btn should now use .btn and .btn-secondary and .btn-sm from index.css */
@@ -192,7 +192,7 @@
 
 .event-footer {
   margin-top: auto; /* Pushes footer to the bottom */
-  padding-top: var(--spacing-unit-3);
+  padding-top: var(--spacing-unit-4);
   border-top: 1px solid var(--border-color-dark);
   display: flex;
   justify-content: space-between;
@@ -201,7 +201,7 @@
 
 .event-actions-main {
   display: flex;
-  gap: var(--spacing-unit-2);
+  gap: var(--spacing-unit-3);
 }
 
 /* event-links and link-btn should now use .btn and .btn-secondary classes */

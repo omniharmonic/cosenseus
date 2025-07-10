@@ -51,7 +51,7 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
   const text = timeline.map((point) => `Sentiment: ${point.sentiment}\nConfidence: ${point.confidence}\n${point.summary}`);
 
   return (
-    <div>
+    <div style={{ width: '100%', minHeight: 300, padding: 16 }}>
       <h3>Sentiment Timeline</h3>
       <Plot
         data={[{
@@ -60,12 +60,12 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
           text,
           mode: 'lines+markers',
           type: 'scatter',
-          marker: { size: 10 },
-          line: { shape: 'linear' },
+          marker: { size: 10, color: '#4a90e2' },
+          line: { shape: 'linear', color: '#4a90e2' },
         }]}
         layout={{
-          width: 600,
-          height: 400,
+          autosize: true,
+          margin: { l: 50, r: 50, t: 50, b: 50 },
           title: 'Sentiment Over Time',
           xaxis: { title: 'Time' },
           yaxis: {
@@ -73,7 +73,17 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
             tickvals: [-1, 0, 1],
             ticktext: ['Negative', 'Neutral', 'Positive'],
           },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'transparent',
+          font: { color: '#F2F2F7' }
         }}
+        config={{ 
+          responsive: true,
+          displayModeBar: false,
+          staticPlot: false
+        }}
+        useResizeHandler={true}
+        style={{ width: '100%', height: '100%' }}
       />
     </div>
   );

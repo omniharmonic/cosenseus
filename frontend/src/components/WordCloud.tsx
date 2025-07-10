@@ -59,7 +59,7 @@ const WordCloud: React.FC<WordCloudProps> = ({ eventId }) => {
             style={{
               fontSize: getFontSize(k.frequency, minFreq, maxFreq),
               fontWeight: 600,
-              color: '#333',
+              color: '#ffffff',
               margin: 4,
               lineHeight: 1.2,
             }}

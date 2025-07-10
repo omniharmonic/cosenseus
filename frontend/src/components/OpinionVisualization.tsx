@@ -36,8 +36,8 @@ const OpinionVisualization: React.FC<OpinionVisualizationProps> = ({
   responses,
   onClusterClick,
   onResponseClick,
-  width = 800,
-  height = 600,
+  width = 600,
+  height = 400,
   isInteractive = true
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);

@@ -77,6 +77,8 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [copiedLink, setCopiedLink] = useState<'participate' | 'results' | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [isAdvancingRound, setIsAdvancingRound] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState<string>('');
+  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
   const fetchEventDetails = async () => {
@@ -124,32 +126,86 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       const response = await apiService.getEventRoundState(eventId);
       if (response.data) {
         setRoundState(response.data);
+        return response.data;
       }
     } catch (err) {
       console.error('Failed to fetch round state:', err);
       // We don't need to show an error for this, as it's for admins mostly
     }
+    return null;
   };
 
   const handleAdvanceRound = async () => {
     if (userRole !== 'admin') return;
 
     setIsAdvancingRound(true);
+    setAnalysisStep('Initiating analysis...');
+    
     try {
       const response = await apiService.advanceEventRound(eventId);
       if (response.error) {
         setError(response.error);
-      } else {
-        // Re-fetch state to update UI
-        await fetchRoundState();
+        setIsAdvancingRound(false);
+        setAnalysisStep('');
+        return;
       }
+
+      // Start polling for round state changes
+      setAnalysisStep('Processing responses...');
+      
+      const pollForCompletion = async () => {
+        const updatedRoundState = await fetchRoundState();
+        
+        if (updatedRoundState?.status === 'admin_review') {
+          // Analysis complete, ready for moderation
+          setAnalysisStep('Analysis complete! Loading moderation interface...');
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            setPollInterval(null);
+          }
+          setIsAdvancingRound(false);
+          setAnalysisStep('');
+          return;
+        }
+        
+        // Update progress message
+        setAnalysisStep('AI analysis in progress...');
+      };
+
+      // Poll every 3 seconds
+      const interval = setInterval(pollForCompletion, 3000);
+      setPollInterval(interval);
+      
+      // Initial check
+      pollForCompletion();
+      
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          setPollInterval(null);
+          setIsAdvancingRound(false);
+          setAnalysisStep('');
+          setError('Analysis is taking longer than expected. Please refresh the page to check status.');
+        }
+      }, 120000);
+
     } catch (err) {
       setError('Failed to advance to the next round.');
       console.error('Error advancing round:', err);
-    } finally {
       setIsAdvancingRound(false);
+      setAnalysisStep('');
     }
   };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [pollInterval]);
 
   const handlePublish = async () => {
     if (userRole !== 'admin' || !event || event.status !== 'draft') return;
@@ -278,7 +334,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
         <div className="error-state">
           <h3>{error.includes('Not Found') ? 'Event Not Found' : 'Error Loading Event'}</h3>
           <p>{error.includes('Not Found') ? 'The event you are looking for does not exist. It may have been deleted.' : error}</p>
-          <button className="btn-primary" onClick={onBack}>
+          <button className="btn btn-primary" onClick={onBack}>
             Back to Dashboard
           </button>
         </div>
@@ -292,7 +348,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
         <div className="error-state">
           <h3>Event Data Not Available</h3>
           <p>The event data could not be loaded, but no specific error was reported. Please try again later.</p>
-          <button className="btn-primary" onClick={onBack}>
+          <button className="btn btn-primary" onClick={onBack}>
             Back to Dashboard
           </button>
         </div>
@@ -323,7 +379,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
         <div className="action-buttons">
           {userRole === 'admin' && event.status === 'draft' && (
             <button
-              className="btn-primary"
+              className="btn btn-primary"
               onClick={handlePublish}
               disabled={isPublishing}
             >
@@ -332,7 +388,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
 
           {event.status === 'active' && userRole !== 'admin' && (
-            <button className="btn-primary" onClick={onParticipate}>
+            <button className="btn btn-primary" onClick={onParticipate}>
               Participate Now
             </button>
           )}
@@ -341,37 +397,43 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           {userRole === 'admin' && event.status === 'active' && (
             <>
               {!roundState && (
-                <button className="btn-primary" onClick={handleAdvanceRound} disabled={isAdvancingRound}>
-                  {isAdvancingRound ? 'Starting...' : 'Start Dialogue'}
+                <button className="btn btn-primary" onClick={handleAdvanceRound} disabled={isAdvancingRound}>
+                  {isAdvancingRound ? (analysisStep || 'Starting...') : 'Start Dialogue'}
                 </button>
               )}
               {roundState?.status === 'waiting_for_responses' && (
                 <button 
-                  className="btn-primary" 
+                  className="btn btn-primary" 
                   onClick={handleAdvanceRound}
                   disabled={isAdvancingRound}
                 >
-                  {isAdvancingRound ? 'Processing...' : 'End Round & Start Analysis'}
+                  {isAdvancingRound ? (analysisStep || 'Processing...') : 'End Round & Start Analysis'}
                 </button>
+              )}
+              {isAdvancingRound && analysisStep && (
+                <div className="analysis-progress">
+                  <div className="loading-spinner small"></div>
+                  <span>{analysisStep}</span>
+                </div>
               )}
             </>
           )}
 
           <button 
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={() => copyToClipboard(getParticipateLink(), 'participate')}
           >
             {copiedLink === 'participate' ? '✓ Copied!' : 'Copy Participate Link'}
           </button>
           <button 
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={() => copyToClipboard(getResultsLink(), 'results')}
           >
             {copiedLink === 'results' ? '✓ Copied!' : 'Copy Public Results Link'}
           </button>
           {onNavigateToParticipate && (
             <button 
-              className="btn-secondary"
+              className="btn btn-secondary"
               onClick={() => onNavigateToParticipate(eventId)}
             >
               Go to Participate
@@ -379,7 +441,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
           {onNavigateToResults && (
             <button 
-              className="btn-secondary"
+              className="btn btn-secondary"
               onClick={() => onNavigateToResults(eventId)}
             >
               View Results

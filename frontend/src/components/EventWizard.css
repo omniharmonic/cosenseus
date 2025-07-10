@@ -25,7 +25,7 @@
 .step-indicator {
   display: flex;
   justify-content: center;
-  gap: var(--spacing-unit-6);
+  gap: var(--spacing-unit-8);
   align-items: center;
 }
 
@@ -62,8 +62,8 @@
 .step:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: calc(100% + 8px);
-  width: calc(var(--spacing-unit-6) - 16px);
+  left: calc(100% + 12px);
+  width: calc(var(--spacing-unit-8) - 24px);
   height: 2px;
   background: var(--border-color-dark);
   top: 50%;
@@ -207,7 +207,7 @@
 
 .button-group {
   display: flex;
-  gap: var(--spacing-unit-2);
+  gap: var(--spacing-unit-3);
 }
 
 /* 

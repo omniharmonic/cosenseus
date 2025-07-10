@@ -121,14 +121,23 @@ const OpinionClusterMap: React.FC<OpinionClusterMapProps> = ({ eventId, roundNum
         <Plot
           data={plotData}
           layout={{
+            autosize: true,
+            margin: { l: 50, r: 50, t: 50, b: 50 },
             title: 'Participant Opinion Clusters',
             xaxis: { title: 'Principal Component 1' },
             yaxis: { title: 'Principal Component 2' },
             hovermode: 'closest',
             paper_bgcolor: 'transparent',
-            plot_bgcolor: 'transparent'
+            plot_bgcolor: 'transparent',
+            font: { color: '#F2F2F7' }
           }}
-          config={{ responsive: true }}
+          config={{ 
+            responsive: true,
+            displayModeBar: false,
+            staticPlot: false
+          }}
+          useResizeHandler={true}
+          style={{ width: '100%', height: '100%' }}
         />
       </div>
       <div className="statements-list">

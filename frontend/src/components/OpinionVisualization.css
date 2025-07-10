@@ -5,6 +5,8 @@
   padding: var(--spacing-unit-4);
   font-family: var(--font-family-sans);
   border: 1px solid var(--border-color-dark);
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .visualization-header {
@@ -46,12 +48,17 @@
   overflow: hidden;
   border-radius: var(--border-radius-medium);
   background: var(--background-color-dark);
-  min-height: 500px;
+  min-height: 400px;
+  max-height: 500px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .opinion-chart {
   display: block;
   background: transparent;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* D3.js specific styles */

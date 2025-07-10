@@ -49,7 +49,7 @@ const ConsensusGraph: React.FC<ConsensusGraphProps> = ({ eventId }) => {
   const text = clusters.map(c => `${c.responses.length} responses`);
 
   return (
-    <div style={{ width: '100%', minHeight: 200, textAlign: 'center', padding: 16 }}>
+    <div style={{ width: '100%', minHeight: 300, textAlign: 'center', padding: 16 }}>
       <h3>Consensus Graph</h3>
       <Plot
         data={[{
@@ -60,14 +60,24 @@ const ConsensusGraph: React.FC<ConsensusGraphProps> = ({ eventId }) => {
           marker: { color: '#4a90e2' },
         }]}
         layout={{
-          width: 600,
-          height: 400,
+          autosize: true,
+          margin: { l: 50, r: 50, t: 50, b: 50 },
           title: 'Agreement by Cluster',
           xaxis: { title: 'Cluster' },
           yaxis: { title: 'Agreement Score', range: [0, 1] },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'transparent',
+          font: { color: '#F2F2F7' }
         }}
+        config={{ 
+          responsive: true,
+          displayModeBar: false,
+          staticPlot: false
+        }}
+        useResizeHandler={true}
+        style={{ width: '100%', height: '100%' }}
       />
-      {summary && <div style={{ marginTop: 12, fontStyle: 'italic', color: '#555' }}>{summary}</div>}
+      {summary && <div style={{ marginTop: 12, fontStyle: 'italic', color: '#8E8E93' }}>{summary}</div>}
     </div>
   );
 };

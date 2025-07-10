@@ -234,11 +234,20 @@
   border-radius: var(--border-radius-large);
   padding: var(--spacing-unit-4);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .visualization-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-medium);
+}
+
+/* Add container constraints for all visualization components */
+.visualization-card > div:last-child {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .visualization-card h3 {
