@@ -387,10 +387,10 @@ Please generate the next set of inquiries."""
                 try:
                     return json.loads(json_str)
                 except json.JSONDecodeError as e:
-                    logger.error(f"Keyword extraction failed to parse JSON: {e}. Response: {response_str}")
+                    logger.error(f"Keyword extraction failed to parse JSON: {e}. Response: {response}")
                     return {"keywords": []}
             else:
-                logger.warning(f"Ollama did not return valid JSON for keywords: {response_str}")
+                logger.warning(f"Ollama did not return valid JSON for keywords: {response}")
                 return {"keywords": []}
         except Exception as e:
             logger.error(f"Keyword extraction failed: {e}")

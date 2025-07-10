@@ -29,6 +29,7 @@ interface Event {
   is_public: boolean;
   created_at: string;
   inquiries: Inquiry[];
+  organizer_id?: string; // Added organizer_id to the interface
 }
 
 interface EventAnalysis {
@@ -80,6 +81,45 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // DEBUG: Log userRole and user data
+  useEffect(() => {
+    console.log('🔍 EventDetails Debug Info:');
+    console.log('- userRole prop:', userRole);
+    console.log('- eventId:', eventId);
+    
+    // Get user data from localStorage for comparison
+    const sessionCode = localStorage.getItem('cosenseus_session_code');
+    console.log('- localStorage session code:', sessionCode);
+    
+    // Try to get current user context if available
+    try {
+      const userContext = JSON.parse(localStorage.getItem('cosenseus_user_data') || '{}');
+      console.log('- localStorage user data:', userContext);
+    } catch (e) {
+      console.log('- No user data in localStorage');
+    }
+    
+    // Additional debugging: check if event data exists and log organizer info
+    if (event) {
+      console.log('- Event organizer_id:', event.organizer_id || 'No organizer_id in event');
+      console.log('- Event data:', event);
+    }
+  }, [userRole, eventId, event]);
+
+  // Helper function to check if current user is admin/organizer
+  const isCurrentUserAdmin = () => {
+    // Primary check: userRole prop
+    if (userRole === 'admin') {
+      console.log('✅ User is admin via userRole prop');
+      return true;
+    }
+    
+    // Fallback check: if userRole is not admin but we need to verify
+    // This could be a backup to check against the event organizer
+    console.log('❌ User is not admin via userRole prop:', userRole);
+    return false;
+  };
 
   const fetchEventDetails = async () => {
     setLoading(true);
@@ -136,7 +176,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   const handleAdvanceRound = async () => {
-    if (userRole !== 'admin') return;
+    if (!isCurrentUserAdmin()) return;
 
     setIsAdvancingRound(true);
     setAnalysisStep('Initiating analysis...');
@@ -208,7 +248,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   }, [pollInterval]);
 
   const handlePublish = async () => {
-    if (userRole !== 'admin' || !event || event.status !== 'draft') return;
+    if (!isCurrentUserAdmin() || !event || event.status !== 'draft') return;
 
     setIsPublishing(true);
     try {
@@ -275,7 +315,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     }
     setAnalysisLoading(false);
 
-    if (userRole === 'admin') {
+    if (isCurrentUserAdmin()) {
       await fetchRoundState();
     }
 
@@ -283,10 +323,15 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   };
   
   useEffect(() => {
+    fetchEventDetails();
     fetchAllData();
-  }, [eventId, userRole]);
+    
+    if (isCurrentUserAdmin()) {
+      fetchRoundState();
+    }
+  }, [eventId]);
 
-  if (userRole === 'admin' && roundState && roundState.status === 'admin_review') {
+  if (isCurrentUserAdmin() && roundState && roundState.status === 'admin_review') {
     return (
       <DialogueModeration 
         eventId={eventId}
@@ -377,7 +422,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       {/* Quick Actions */}
       <div className="quick-actions">
         <div className="action-buttons">
-          {userRole === 'admin' && event.status === 'draft' && (
+          {isCurrentUserAdmin() && event.status === 'draft' && (
             <button
               className="btn btn-primary"
               onClick={handlePublish}
@@ -394,7 +439,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
           
           {/* --- Admin Dialogue Controls --- */}
-          {userRole === 'admin' && event.status === 'active' && (
+          {isCurrentUserAdmin() && event.status === 'active' && (
             <>
               {!roundState && (
                 <button className="btn btn-primary" onClick={handleAdvanceRound} disabled={isAdvancingRound}>
@@ -449,7 +494,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
         </div>
         
-        {userRole === 'admin' && roundState?.status === 'admin_review' && (
+        {isCurrentUserAdmin() && roundState?.status === 'admin_review' && (
           <div className="moderation-section">
             <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} onApprovalSuccess={fetchAllData} />
           </div>

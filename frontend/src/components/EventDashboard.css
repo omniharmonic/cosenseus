@@ -139,7 +139,9 @@
 
 .event-actions {
   display: flex;
-  gap: var(--spacing-unit-2);
+  gap: var(--spacing-unit-3); /* Increase gap between action buttons */
+  align-items: center;
+  flex-wrap: wrap; /* Prevent overflow from card bounds */
 }
 
 /* action-btn should now use .btn and .btn-secondary and .btn-sm from index.css */
@@ -195,13 +197,15 @@
   padding-top: var(--spacing-unit-4);
   border-top: 1px solid var(--border-color-dark);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column; /* Stack elements vertically for better spacing */
+  gap: var(--spacing-unit-3); /* Add gap between footer elements */
 }
 
 .event-actions-main {
   display: flex;
-  gap: var(--spacing-unit-3);
+  gap: var(--spacing-unit-4); /* Increase gap between main action buttons */
+  align-items: center;
+  flex-wrap: wrap; /* Prevent overflow */
 }
 
 /* event-links and link-btn should now use .btn and .btn-secondary classes */

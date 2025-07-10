@@ -21,13 +21,14 @@
 
 .dashboard-tabs {
   display: flex;
+  gap: var(--spacing-unit-3); /* Add gap between Organizing/Participating buttons */
   border-bottom: 1px solid var(--border-color-dark);
   margin-bottom: var(--spacing-unit-6);
 }
 
 .dashboard-tabs .tab-button {
   /* This now uses .nav-link-button as a base */
-  padding: var(--spacing-unit-2) var(--spacing-unit-3);
+  padding: var(--spacing-unit-2) var(--spacing-unit-4); /* Increase horizontal padding */
   font-size: 1.1rem; /* Slightly larger for emphasis */
   border-bottom: 3px solid transparent;
   margin-bottom: -2px; /* Aligns with the parent border */
@@ -132,7 +133,9 @@
 
 .event-actions {
   display: flex;
-  gap: var(--spacing-unit-3);
+  gap: var(--spacing-unit-4); /* Increase gap between buttons */
+  align-items: center; /* Better alignment */
+  flex-wrap: wrap; /* Prevent overflow */
 }
 /* Re-using button styles from index.css, but can add specific overrides here */
 .create-event-btn {

@@ -99,6 +99,43 @@
 
 /* Status badges will use styles from a common file */
 
+.quick-actions {
+  margin-bottom: var(--spacing-unit-4);
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-unit-4); /* Proper spacing between action buttons */
+  align-items: center;
+  margin-bottom: var(--spacing-unit-3);
+}
+
+.action-buttons .btn {
+  white-space: nowrap; /* Prevent text wrapping in buttons */
+}
+
+.analysis-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit-2);
+  padding: var(--spacing-unit-2) var(--spacing-unit-3);
+  background-color: var(--secondary-color);
+  border-radius: var(--border-radius-medium);
+  border: 1px solid var(--border-color-dark);
+}
+
+.analysis-progress .loading-spinner.small {
+  width: 16px;
+  height: 16px;
+}
+
+.moderation-section {
+  margin-top: var(--spacing-unit-3);
+  padding-top: var(--spacing-unit-3);
+  border-top: 1px solid var(--border-color-dark);
+}
+
 .analysis-layout {
   display: grid;
   grid-template-columns: 1fr;

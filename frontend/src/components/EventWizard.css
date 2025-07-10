@@ -27,6 +27,8 @@
   justify-content: center;
   gap: var(--spacing-unit-8);
   align-items: center;
+  flex-direction: row; /* Ensure horizontal layout */
+  flex-wrap: nowrap; /* Prevent wrapping that could cause stacking */
 }
 
 .step {
@@ -179,7 +181,28 @@
 
 .inquiry-controls {
   display: flex;
-  gap: var(--spacing-unit-2);
+  gap: var(--spacing-unit-3); /* Increase gap between up/down arrows */
+  align-items: center;
+}
+
+.inquiry-controls button {
+  background-color: var(--card-background-color-dark);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: var(--spacing-unit) var(--spacing-unit-2);
+  border-radius: var(--border-radius-small);
+  transition: all 0.2s ease;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inquiry-controls button:hover {
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
 }
 
 /* 
@@ -207,7 +230,9 @@
 
 .button-group {
   display: flex;
-  gap: var(--spacing-unit-3);
+  gap: var(--spacing-unit-4); /* Increase gap between wizard footer buttons */
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* 
@@ -228,7 +253,8 @@
   }
 
   .step-indicator {
-    gap: calc(var(--spacing-unit) * 2);
+    gap: var(--spacing-unit-4); /* Maintain decent spacing on mobile */
+    flex-wrap: nowrap; /* Ensure no wrapping */
   }
 
   .step {
@@ -238,7 +264,7 @@
   }
 
   .step:not(:last-child)::after {
-    width: calc(var(--spacing-unit-5) - 14px);
+    width: calc(var(--spacing-unit-4) - 14px); /* Adjust connector line width */
   }
 
   .form-row {
@@ -253,7 +279,7 @@
 
   .button-group {
     flex-direction: column;
-    gap: var(--spacing-unit-2);
+    gap: var(--spacing-unit-3); /* Increase mobile button spacing */
   }
 
   .button-group > button {

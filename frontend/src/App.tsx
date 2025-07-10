@@ -162,7 +162,7 @@ const Navigation: React.FC = () => {
         </button>
       </div>
       <div className="nav-user">
-        <span className="user-role">{user ? 'user' : 'anonymous'}</span>
+        <span className="user-role">{user ? user.role : 'anonymous'}</span>
         <span className="user-name">{user?.display_name || 'Anonymous'}</span>
         {user?.session_code && (
           <button 
@@ -235,6 +235,12 @@ const EventDetailsRoute: React.FC = () => {
   const navigate = useNavigate();
 
   if (!eventId) return <Navigate to="/events" />;
+
+  // DEBUG: Log user authentication state in EventDetailsRoute
+  console.log('🔍 EventDetailsRoute Debug:');
+  console.log('- user object:', user);
+  console.log('- user.role:', user?.role);
+  console.log('- userRole being passed to EventDetails:', user ? user.role : 'anonymous');
 
   const handleNavigateToParticipate = (eventId: string) => {
     navigate(`/participate/${eventId}`);
