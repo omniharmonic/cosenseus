@@ -77,6 +77,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [copiedLink, setCopiedLink] = useState<'participate' | 'results' | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [isAdvancingRound, setIsAdvancingRound] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const fetchEventDetails = async () => {
     setLoading(true);
@@ -147,6 +148,26 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       console.error('Error advancing round:', err);
     } finally {
       setIsAdvancingRound(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (userRole !== 'admin' || !event || event.status !== 'draft') return;
+
+    setIsPublishing(true);
+    try {
+      const response = await apiService.publishEvent(eventId);
+      if (response.error) {
+        setError(response.error);
+      } else {
+        // Re-fetch event details to update the status and UI
+        await fetchEventDetails();
+      }
+    } catch (err) {
+      setError('Failed to publish the event.');
+      console.error('Error publishing event:', err);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -259,8 +280,8 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     return (
       <div className="event-details-container">
         <div className="error-state">
-          <h3>Event data is unavailable.</h3>
-          <p>The event could not be loaded. Please try again later.</p>
+          <h3>Event Data Not Available</h3>
+          <p>The event data could not be loaded, but no specific error was reported. Please try again later.</p>
           <button className="btn-primary" onClick={onBack}>
             Back to Dashboard
           </button>
@@ -286,31 +307,46 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           <p className="event-description">{event.description}</p>
         </div>
       </div>
-
+      
       {/* Quick Actions */}
       <div className="quick-actions">
         <div className="action-buttons">
-          {event.status === 'active' && (
-            <>
-              <button className="btn-primary" onClick={onParticipate}>
-                Participate Now
-              </button>
-               {onStartDialogue && (
-                 <button className="btn-primary" onClick={onStartDialogue}>
-                   Start Dialogue Rounds
-                 </button>
-               )}
-            </>
-          )}
-          {userRole === 'admin' && roundState?.status === 'waiting_for_responses' && (
-            <button 
-              className="btn-primary" 
-              onClick={handleAdvanceRound}
-              disabled={isAdvancingRound}
+          {userRole === 'admin' && event.status === 'draft' && (
+            <button
+              className="btn-primary"
+              onClick={handlePublish}
+              disabled={isPublishing}
             >
-              {isAdvancingRound ? 'Processing...' : 'End Round & Start Analysis'}
+              {isPublishing ? 'Publishing...' : 'Publish Event'}
             </button>
           )}
+
+          {event.status === 'active' && userRole !== 'admin' && (
+            <button className="btn-primary" onClick={onParticipate}>
+              Participate Now
+            </button>
+          )}
+          
+          {/* --- Admin Dialogue Controls --- */}
+          {userRole === 'admin' && event.status === 'active' && (
+            <>
+              {!roundState && (
+                <button className="btn-primary" onClick={handleAdvanceRound} disabled={isAdvancingRound}>
+                  {isAdvancingRound ? 'Starting...' : 'Start Dialogue'}
+                </button>
+              )}
+              {roundState?.status === 'waiting_for_responses' && (
+                <button 
+                  className="btn-primary" 
+                  onClick={handleAdvanceRound}
+                  disabled={isAdvancingRound}
+                >
+                  {isAdvancingRound ? 'Processing...' : 'End Round & Start Analysis'}
+                </button>
+              )}
+            </>
+          )}
+
           <button 
             className="btn-secondary"
             onClick={() => copyToClipboard(getParticipateLink(), 'participate')}
@@ -340,13 +376,13 @@ const EventDetails: React.FC<EventDetailsProps> = ({
             </button>
           )}
         </div>
+        
+        {userRole === 'admin' && roundState?.status === 'admin_review' && (
+          <div className="moderation-section">
+            <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} />
+          </div>
+        )}
       </div>
-      
-      {userRole === 'admin' && roundState?.status === 'admin_review' && (
-        <div className="moderation-section">
-          <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} />
-        </div>
-      )}
 
       {/* Event Information */}
       <div className="event-info-grid">

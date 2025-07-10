@@ -222,6 +222,50 @@ async def get_event_round_state(event_id: str, db: Session = Depends(get_local_d
     }
 
 
+@router.post("/{event_id}/publish", response_model=EventResponse)
+async def publish_event(
+    event_id: str,
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
+):
+    """Publish an event, changing its status from draft to active."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to publish this event")
+
+    if event.status != EventStatus.DRAFT:
+        raise HTTPException(status_code=400, detail=f"Event cannot be published from its current state: {event.status.value}")
+
+    event.status = EventStatus.ACTIVE
+    event.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(event)
+
+    participant_count = db.query(EventParticipant).filter(EventParticipant.event_id == event.id).count()
+
+    return EventResponse(
+        id=str(event.id),
+        title=event.title,
+        description=event.description,
+        event_type=event.event_type,
+        status=event.status.value,
+        max_participants=event.max_participants,
+        current_participants=participant_count,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        is_public=event.is_public,
+        allow_anonymous=event.allow_anonymous,
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+        created_by=str(event.organizer_id),
+        inquiries=[InquiryResponse.from_orm(i) for i in event.inquiries]
+    )
+
+
 @router.get("/{event_id}/round-results", response_model=RoundResultsResponse)
 async def get_event_round_results(event_id: str, round_number: Optional[int] = None, db: Session = Depends(get_local_db)):
     """Get the analysis and synthesis results for a specific round of an event."""

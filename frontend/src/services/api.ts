@@ -118,6 +118,12 @@ class ApiService {
     });
   }
 
+  async publishEvent(eventId: string): Promise<ApiResponse<any>> {
+    return this.request(`/events/${eventId}/publish`, {
+      method: 'POST',
+    });
+  }
+
   // Event participation
   async joinEvent(eventId: string, participantData: any): Promise<ApiResponse<any>> {
     return this.request(`/events/${eventId}/join`, {
@@ -273,12 +279,6 @@ class ApiService {
   // Local development status
   async getLocalStatus(): Promise<ApiResponse<any>> {
     return this.request('/local/status');
-  }
-
-  async publishEvent(eventId: string): Promise<ApiResponse<any>> {
-    return this.request(`/events/${eventId}/publish`, {
-      method: 'POST',
-    });
   }
 }
 
