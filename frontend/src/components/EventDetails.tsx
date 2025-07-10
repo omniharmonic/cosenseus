@@ -171,11 +171,42 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   useEffect(() => {
-    fetchEventDetails();
-    fetchEventAnalysis();
-    if (userRole === 'admin') {
-      fetchRoundState();
-    }
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null);
+
+      // 1. Fetch event details first
+      const eventResponse = await apiService.getEvent(eventId);
+
+      if (eventResponse.error) {
+        // If event not found or other error, stop here and set error state
+        setError(eventResponse.error);
+        setLoading(false);
+        return;
+      }
+
+      setEvent(eventResponse.data);
+
+      // 2. If event details are successfully fetched, fetch analysis and round state
+      setAnalysisLoading(true);
+      const analysisResponse = await apiService.getEventSummary(eventId); // Switched to a more appropriate summary endpoint
+      if (analysisResponse.data) {
+        setAnalysis(analysisResponse.data);
+      }
+      // Don't set a primary error if only analysis fails, but we could show a secondary indicator
+      if (analysisResponse.error) {
+        console.warn("Could not load event analysis:", analysisResponse.error);
+      }
+      setAnalysisLoading(false);
+
+      if (userRole === 'admin') {
+        await fetchRoundState();
+      }
+
+      setLoading(false);
+    };
+
+    fetchAllData();
   }, [eventId, userRole]);
 
   const formatDate = (dateString: string) => {
@@ -210,14 +241,28 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     );
   }
 
-  if (error || !event) {
+  if (error && !event) {
     return (
       <div className="event-details-container">
         <div className="error-state">
-          <h3>Error Loading Event</h3>
-          <p>{error || 'Event not found'}</p>
+          <h3>{error.includes('Not Found') ? 'Event Not Found' : 'Error Loading Event'}</h3>
+          <p>{error.includes('Not Found') ? 'The event you are looking for does not exist. It may have been deleted.' : error}</p>
           <button className="btn-primary" onClick={onBack}>
-            Back to Events
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="event-details-container">
+        <div className="error-state">
+          <h3>Event data is unavailable.</h3>
+          <p>The event could not be loaded. Please try again later.</p>
+          <button className="btn-primary" onClick={onBack}>
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -229,13 +274,13 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       {/* Header */}
       <div className="event-details-header">
         <button className="back-button" onClick={onBack}>
-          ← Back to Events
+          &larr; Back to Dashboard
         </button>
         <div className="header-content">
           <div className="event-title-section">
             <h1>{event.title}</h1>
             <span className={getStatusBadgeClass(event.status)}>
-              {event.status}
+              {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
             </span>
           </div>
           <p className="event-description">{event.description}</p>
@@ -250,11 +295,11 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               <button className="btn-primary" onClick={onParticipate}>
                 Participate Now
               </button>
-              {onStartDialogue && (
-                <button className="btn-primary" onClick={onStartDialogue}>
-                  Start Dialogue Rounds
-                </button>
-              )}
+               {onStartDialogue && (
+                 <button className="btn-primary" onClick={onStartDialogue}>
+                   Start Dialogue Rounds
+                 </button>
+               )}
             </>
           )}
           {userRole === 'admin' && roundState?.status === 'waiting_for_responses' && (
@@ -296,7 +341,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
         </div>
       </div>
-
+      
       {userRole === 'admin' && roundState?.status === 'admin_review' && (
         <div className="moderation-section">
           <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} />
@@ -346,20 +391,20 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               {analysisLoading ? '🔄' : '🔄'}
             </button>
           </div>
-          
+
           {analysisLoading ? (
             <div className="loading-state">
               <div className="loading-spinner small"></div>
               <p>Analyzing responses...</p>
             </div>
-          ) : analysis ? (
+          ) : analysis && analysis.analysis ? (
             <div className="analysis-content">
               <div className="analysis-summary">
                 <p><strong>Summary:</strong> {analysis.analysis.summary}</p>
                 <p><strong>Sentiment:</strong> {analysis.analysis.participant_sentiment}</p>
                 <p><strong>Responses:</strong> {analysis.response_count}</p>
               </div>
-              
+
               {Array.isArray(analysis.analysis.key_themes) && analysis.analysis.key_themes.length > 0 && (
                 <div className="analysis-section">
                   <h4>Key Themes</h4>
@@ -428,29 +473,6 @@ const EventDetails: React.FC<EventDetailsProps> = ({
             <ConsensusGraph eventId={eventId} />
           </div>
         )}
-      </div>
-
-      {/* Activity Timeline - Placeholder for future implementation */}
-      <div className="info-card">
-        <h3>Recent Activity</h3>
-        <div className="activity-timeline">
-          <div className="activity-item">
-            <div className="activity-icon">📝</div>
-            <div className="activity-content">
-              <p><strong>Event Created</strong></p>
-              <p className="activity-time">{formatDate(event.created_at)}</p>
-            </div>
-          </div>
-          {event.status === 'active' && (
-            <div className="activity-item">
-              <div className="activity-icon">🚀</div>
-              <div className="activity-content">
-                <p><strong>Event Published</strong></p>
-                <p className="activity-time">Recently</p>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

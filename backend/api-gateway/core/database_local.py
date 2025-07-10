@@ -14,7 +14,7 @@ from shared.models.database import (
 
 # Define the path to the local database file
 # It's placed in the project root's `local_data` directory
-LOCAL_DB_PATH = Path(__file__).parent.parent.parent.parent.parent / "local_data" / "cosenseus_local.db"
+LOCAL_DB_PATH = Path(__file__).parent.parent.parent.parent / "local_data" / "cosenseus_local.db"
 LOCAL_DB_URL = f"sqlite:///{LOCAL_DB_PATH}"
 
 # Ensure the local_data directory exists
@@ -45,34 +45,15 @@ def get_local_db() -> Generator[Session, None, None]:
 
 def init_local_db() -> None:
     """
-    Initialize local database tables and seed with initial data.
-    This should be called when the local application starts.
+    Initialize local database tables and seed with initial data if the DB file doesn't exist.
+    This is the standard, stable pattern for local development.
     """
     print("Initializing local database...")
-    # Only create and seed the DB if it doesn't exist
     if not LOCAL_DB_PATH.exists():
         print("Database file not found. Creating and seeding a new one.")
-        print("Creating all tables from Base metadata...")
-        # Now that all models are imported, Base.metadata knows about them.
-        Base.metadata.create_all(bind=local_engine)
-        print("✅ All tables created.")
-        
-        # Create a new session for seeding data
-        db = LocalSessionLocal()
-        try:
-            print("Seeding initial data...")
-            create_initial_local_data(db)
-            db.commit()
-            print("✅ Initial data seeded and committed.")
-        except Exception as e:
-            print(f"❌ Error seeding data: {e}")
-            db.rollback()
-        finally:
-            db.close()
-            print("Database session closed.")
+        init_local_db_internal()
     else:
         print("✅ Database already exists. Skipping creation and seeding.")
-
 
 def get_inquiry_by_id(db: Session, inquiry_id: str):
     """
@@ -120,19 +101,40 @@ def create_initial_local_data(db: Session):
 
 def reset_local_db():
     """
-    Drop all tables and recreate them.
+    Utility function to manually drop all tables and recreate them.
+    This is NOT called on startup anymore.
     """
+    print("Resetting local database...")
     try:
         # Drop all tables using the single, shared Base
         Base.metadata.drop_all(bind=local_engine)
-        print("Local database tables dropped.")
+        print("✅ Local database tables dropped.")
         
         # Recreate tables and initial data
-        init_local_db()
-        print("Local database initialized with fresh data.")
+        init_local_db_internal()
+        print("✅ Local database initialized with fresh data.")
         
     except Exception as e:
-        print(f"Error resetting local database: {e}")
+        print(f"❌ Error resetting local database: {e}")
+
+def init_local_db_internal():
+    """The actual implementation of creating and seeding the database."""
+    print("Creating all tables from Base metadata...")
+    Base.metadata.create_all(bind=local_engine)
+    print("✅ All tables created.")
+
+    db = LocalSessionLocal()
+    try:
+        print("Seeding initial data...")
+        create_initial_local_data(db)
+        db.commit()
+        print("✅ Initial data seeded and committed.")
+    except Exception as e:
+        print(f"❌ Error seeding data: {e}")
+        db.rollback()
+    finally:
+        db.close()
+        print("Database session closed.")
 
 def create_temporary_user(db: Session) -> TemporaryUser:
     """

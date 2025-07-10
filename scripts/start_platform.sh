@@ -174,7 +174,8 @@ mkdir -p "$PROJECT_ROOT/logs"
 print_status "Starting NLP service..."
 cd "$PROJECT_ROOT/backend/nlp_service"
 source ../venv/bin/activate
-python main.py > "$PROJECT_ROOT/logs/nlp_service.log" 2>&1 &
+# python main.py > "$PROJECT_ROOT/logs/nlp_service.log" 2>&1 &
+python main.py &
 NLP_PID=$!
 print_success "NLP service started (PID: $NLP_PID)"
 
@@ -185,7 +186,8 @@ wait_for_service "http://localhost:8003/health" "NLP Service"
 print_status "Starting backend API gateway..."
 cd "$PROJECT_ROOT/backend/api-gateway"
 source ../venv/bin/activate
-python main_local.py > "$PROJECT_ROOT/logs/backend.log" 2>&1 &
+# python main_local.py > "$PROJECT_ROOT/logs/backend.log" 2>&1 &
+python main_local.py &
 BACKEND_PID=$!
 print_success "Backend started (PID: $BACKEND_PID)"
 
@@ -200,7 +202,8 @@ if [ "$BACKEND_ONLY" = false ]; then
     else
         print_status "Starting frontend..."
         cd "$PROJECT_ROOT/frontend"
-        npm start > "$PROJECT_ROOT/logs/frontend.log" 2>&1 &
+        # npm start > "$PROJECT_ROOT/logs/frontend.log" 2>&1 &
+        npm start &
         FRONTEND_PID=$!
         FRONTEND_STARTED=true
         print_success "Frontend started (PID: $FRONTEND_PID)"

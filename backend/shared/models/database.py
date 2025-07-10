@@ -196,6 +196,7 @@ class Inquiry(Base):
     
     # Configuration
     order_index = Column(Integer, default=0)
+    round_number = Column(Integer, default=1, nullable=False)
     is_required = Column(Boolean, default=True)
     response_type = Column(String(20), default="text")  # text, audio, video, multiple_choice
     

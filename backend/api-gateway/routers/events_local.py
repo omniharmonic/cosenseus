@@ -333,55 +333,69 @@ async def create_event(
     event_data: EventCreate,
     db: Session = Depends(get_local_db)
 ):
-    user = db.query(TemporaryUser).filter(TemporaryUser.session_code == event_data.session_code).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Session code not found.")
+    creator = db.query(TemporaryUser).filter(TemporaryUser.session_code == event_data.session_code).first()
+    if not creator or creator.session_code != event_data.session_code:
+        raise HTTPException(status_code=403, detail="Invalid session code for event creation.")
 
     new_event = Event(
         title=event_data.title,
         description=event_data.description,
         event_type=event_data.event_type,
-        status=EventStatus.DRAFT,
         max_participants=event_data.max_participants,
         start_time=event_data.start_time,
         end_time=event_data.end_time,
         is_public=event_data.is_public,
         allow_anonymous=event_data.allow_anonymous,
-        organizer_id=user.id,
+        organizer_id=creator.id
     )
     db.add(new_event)
-    db.flush()
+    db.flush()  # Use flush to get the new_event.id for the inquiries
 
-    for i, inquiry_data in enumerate(event_data.inquiries):
+    for inquiry_data in event_data.inquiries:
         new_inquiry = Inquiry(
             event_id=new_event.id,
-            question_text=inquiry_data.title,
-            description=inquiry_data.content,
-            response_type=inquiry_data.inquiry_type,
+            question_text=inquiry_data.title, # Assuming title maps to question_text
+            description=inquiry_data.content, # Assuming content maps to description
+            order_index=inquiry_data.order_index,
             is_required=inquiry_data.required,
-            order_index=inquiry_data.order_index if inquiry_data.order_index > 0 else i
+            response_type="text",
+            round_number=1 # Inquiries created with the event are always for round 1
         )
         db.add(new_inquiry)
 
-    db.commit()
+    # Also create the first round for the event
+    first_round = EventRound(
+        event_id=new_event.id,
+        round_number=1,
+        status=EventRoundStatus.WAITING_FOR_RESPONSES
+    )
+    db.add(first_round)
+
+    db.commit() # Commit all new records to the database
     db.refresh(new_event)
 
+    # Re-query to construct the response model accurately
+    db.refresh(new_event)
+    event_with_inquiries = db.query(Event).filter(Event.id == new_event.id).one()
+    
+    current_participants = db.query(EventParticipant).filter(EventParticipant.event_id == new_event.id).count()
+
     return EventResponse(
-        id=str(new_event.id),
-        title=new_event.title,
-        description=new_event.description,
-        event_type=new_event.event_type,
-        status=new_event.status.value,
-        max_participants=new_event.max_participants,
-        current_participants=0,
-        start_time=new_event.start_time,
-        end_time=new_event.end_time,
-        is_public=new_event.is_public,
-        allow_anonymous=new_event.allow_anonymous,
-        created_at=new_event.created_at,
-        updated_at=new_event.updated_at,
-        created_by=user.display_name,
-        inquiries=[inq for inq in new_event.inquiries]
+        id=str(event_with_inquiries.id),
+        title=event_with_inquiries.title,
+        description=event_with_inquiries.description,
+        event_type=event_with_inquiries.event_type,
+        status=event_with_inquiries.status.value,
+        max_participants=event_with_inquiries.max_participants,
+        current_participants=current_participants,
+        start_time=event_with_inquiries.start_time,
+        end_time=event_with_inquiries.end_time,
+        is_public=event_with_inquiries.is_public,
+        allow_anonymous=event_with_inquiries.allow_anonymous,
+        created_at=event_with_inquiries.created_at,
+        updated_at=event_with_inquiries.updated_at,
+        created_by=event_with_inquiries.organizer.display_name,
+        inquiries=[InquiryResponse.from_orm(i) for i in event_with_inquiries.inquiries]
     )
 
 @router.get("/{event_id}", response_model=EventResponse)

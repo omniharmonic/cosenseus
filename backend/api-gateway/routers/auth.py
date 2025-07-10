@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 import uuid
 
-from core.database_local import get_local_db
+from core.database_local import get_local_db, LocalSessionLocal
 from shared.models.database import TemporaryUser
 
 router = APIRouter()
@@ -34,59 +34,90 @@ class TemporaryUserResponse(BaseModel):
         from_attributes = True
 
 
-def get_current_user(session_code: str = Header(..., alias="X-Session-Code"), db: Session = Depends(get_local_db)):
+def get_current_user(session_code: str = Header(..., alias="X-Session-Code")):
     """
     Dependency to get the current user from the session code in the header.
+    This now manually manages its own database session to ensure consistency.
     """
-    if not session_code:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Header"},
-        )
-    
-    user = db.query(TemporaryUser).filter(TemporaryUser.session_code == session_code).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session code",
-            headers={"WWW-Authenticate": "Header"},
-        )
+    db = LocalSessionLocal()
+    try:
+        print(f"🔍 Validating session code from header: {session_code}")
+        if not session_code:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Header"},
+            )
         
-    return user
+        user = db.query(TemporaryUser).filter(TemporaryUser.session_code == session_code).first()
+        
+        if not user:
+            print(f"❌ Session code not found in database: {session_code}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid session code",
+                headers={"WWW-Authenticate": "Header"},
+            )
+        
+        print(f"✅ Session validated for user: {user.display_name}")
+        return user
+    finally:
+        db.close()
 
 @router.post("/session/create", response_model=TemporaryUserResponse, status_code=status.HTTP_201_CREATED)
-def create_session(request: CreateSessionRequest, db: Session = Depends(get_local_db)):
+def create_session(request: CreateSessionRequest):
     """
-    Creates a new temporary user and returns their session information.
+    Creates a new temporary user. Manually manages the DB session for guaranteed commit.
     """
-    print(f"Received request to create session for: {request.display_name}")
-    
-    if not request.display_name.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Display name cannot be empty."
-        )
-    
-    new_user = TemporaryUser(display_name=request.display_name)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
+    db = LocalSessionLocal()
+    try:
+        if not request.display_name.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Display name cannot be empty."
+            )
+        
+        new_user = TemporaryUser(display_name=request.display_name)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        print(f"✨ New session created. User: {new_user.display_name}, Session Code: {new_user.session_code}")
+        
+        # --- DIAGNOSTIC STEP ---
+        # Immediately try to read the user back from the DB to verify the commit.
+        print(f"🔬 Verifying persistence for session code: {new_user.session_code}")
+        verified_user = db.query(TemporaryUser).filter(TemporaryUser.session_code == new_user.session_code).first()
+        if verified_user:
+            print(f"✅ User successfully read back from DB. Display Name: {verified_user.display_name}")
+        else:
+            print(f"❌ CRITICAL: User could NOT be read back from DB immediately after commit.")
+        # --- END DIAGNOSTIC STEP ---
+        
+        # Return a Pydantic model instance, not the ORM object, as the session is closed.
+        return TemporaryUserResponse.from_orm(new_user)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+    finally:
+        db.close()
+
 
 @router.post("/session/login", response_model=TemporaryUserResponse)
-def login_with_session_code(request: LoginRequest, db: Session = Depends(get_local_db)):
+def login_with_session_code(request: LoginRequest):
     """
-    Logs in a user using their persistent session code.
+    Logs in a user. Manually manages the DB session for guaranteed lookup.
     """
-    user = db.query(TemporaryUser).filter(TemporaryUser.session_code == request.session_code).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session code not found."
-        )
+    db = LocalSessionLocal()
+    try:
+        user = db.query(TemporaryUser).filter(TemporaryUser.session_code == request.session_code).first()
         
-    return user 
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session code not found."
+            )
+        
+        return TemporaryUserResponse.from_orm(user)
+    finally:
+        db.close() 

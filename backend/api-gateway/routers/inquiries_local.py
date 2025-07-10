@@ -8,7 +8,7 @@ from typing import List, Optional
 import uuid
 
 from core.database_local import get_local_db
-from shared.models.database import Inquiry
+from shared.models.database import Inquiry, Event
 from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
@@ -32,9 +32,28 @@ class InquiryResponse(BaseModel):
         from_attributes = True
 
 @router.get("/event/{event_id}", response_model=List[InquiryResponse])
-async def get_inquiries_for_event(event_id: str, db: Session = Depends(get_local_db)):
-    """Get all inquiries for a specific event."""
-    inquiries = db.query(Inquiry).filter(Inquiry.event_id == event_id).order_by(Inquiry.order_index).all()
+async def get_inquiries_for_event(
+    event_id: str, 
+    round_number: Optional[int] = None, 
+    db: Session = Depends(get_local_db)
+):
+    """
+    Get inquiries for a specific event.
+    If round_number is provided, it filters inquiries for that round.
+    If not, it defaults to the event's current active round.
+    """
+    query = db.query(Inquiry).filter(Inquiry.event_id == event_id)
+    
+    if round_number is not None:
+        query = query.filter(Inquiry.round_number == round_number)
+    else:
+        # If no round number is provided, fetch for the event's current round.
+        event = db.query(Event).filter(Event.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        query = query.filter(Inquiry.round_number == event.current_round)
+
+    inquiries = query.order_by(Inquiry.order_index).all()
     if not inquiries:
         return []
     return inquiries 

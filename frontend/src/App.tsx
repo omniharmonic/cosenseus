@@ -49,13 +49,13 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     const loadUserFromSession = async () => {
-      const sessionCode = localStorage.getItem('session_code');
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
       if (sessionCode) {
         try {
           const response = await apiService.loginWithSession(sessionCode);
           // Check for specific error message to clear stale session codes
           if (response.error && response.error.includes('not found')) {
-            localStorage.removeItem('session_code');
+            localStorage.removeItem('cosenseus_session_code');
             setUser(null);
             console.error('Stale session code cleared:', response.error);
           } else if (response.data) {
@@ -64,7 +64,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             console.error('Login failed:', response.error);
           }
         } catch (error) {
-          localStorage.removeItem('session_code');
+          localStorage.removeItem('cosenseus_session_code');
           setUser(null);
           console.error('Failed to load user session:', error);
         }
@@ -78,7 +78,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     try {
       const res = await apiService.createSession(displayName);
       if (res.data) {
-        localStorage.setItem('census_session_code', res.data.session_code);
+        localStorage.setItem('cosenseus_session_code', res.data.session_code);
         setUser(res.data);
         setShowSignIn(false);
       }
@@ -92,7 +92,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     try {
       const res = await apiService.loginWithSession(sessionCode);
       if (res.data) {
-        localStorage.setItem('census_session_code', res.data.session_code);
+        localStorage.setItem('cosenseus_session_code', res.data.session_code);
         setUser(res.data);
         setShowSignIn(false);
       }
@@ -104,7 +104,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('census_session_code');
+    localStorage.removeItem('cosenseus_session_code');
     setUser(null);
     setShowSignIn(true);
   };
