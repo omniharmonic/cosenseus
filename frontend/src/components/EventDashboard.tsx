@@ -36,11 +36,14 @@ const EventDashboard: React.FC<EventDashboardProps> = ({
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editingEventFormData, setEditingEventFormData] = useState<any | null>(null);
 
-  // Add migration logic at the top of the file (after imports)
-  const oldSessionCode = localStorage.getItem('census_session_code');
-  if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
-    localStorage.setItem('cosenseus_session_code', oldSessionCode);
-  }
+  // Migration logic: migrate old session code if needed
+  useEffect(() => {
+    const oldSessionCode = localStorage.getItem('census_session_code');
+    if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
+      localStorage.setItem('cosenseus_session_code', oldSessionCode);
+      localStorage.removeItem('census_session_code');
+    }
+  }, []);
 
   // Real API functions
   const fetchEvents = async () => {

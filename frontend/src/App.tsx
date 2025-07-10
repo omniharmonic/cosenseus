@@ -132,7 +132,7 @@ const Navigation: React.FC = () => {
         <div className="nav-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <Logo size="small" animated={false} />
         </div>
-        <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>CENSUS</h2>
+        <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>CoSenseus</h2>
       </div>
       <div className="nav-links">
         <button 

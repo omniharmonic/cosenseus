@@ -106,4 +106,134 @@
   padding: 2rem;
   font-size: 1.1rem;
   color: #777;
-} 
+}
+
+/* Missing styles for DialogueModeration component */
+.synthesis-summary {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid #40e0d0;
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-list {
+  margin: 1rem 0;
+}
+
+.prompt-item {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.prompt-title {
+  color: #0077b6;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.prompt-text {
+  color: #333;
+  line-height: 1.6;
+  margin: 0.5rem 0;
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #333;
+  background-color: #fff;
+  resize: vertical;
+  min-height: 100px;
+  box-sizing: border-box;
+}
+
+.prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.prompt-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.prompt-button.edit {
+  background-color: #f8f9fa;
+  color: #0077b6;
+  border: 1px solid #0077b6;
+}
+
+.prompt-button.edit:hover {
+  background-color: #0077b6;
+  color: #fff;
+}
+
+.prompt-button.save {
+  background-color: #40e0d0;
+  color: #fff;
+  border: 1px solid #40e0d0;
+}
+
+.prompt-button.save:hover {
+  background-color: #33b8a8;
+}
+
+.prompt-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.approve-button {
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.approve-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.approve-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.save-prompt-notice {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

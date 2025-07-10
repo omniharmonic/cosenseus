@@ -600,7 +600,7 @@ async def consensus_graph(event_id: str, db: Session = Depends(get_local_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate consensus graph: {str(e)}") 
 
-def _run_polis_analysis(responses: List[str]):
+def _run_polis_analysis(responses: List[str], user_ids: List[str] = None):
     """
     Helper function to run the full Polis-style analysis pipeline.
     This function orchestrates the entire process from raw text to clustered opinions.
@@ -617,8 +617,10 @@ def _run_polis_analysis(responses: List[str]):
     user_statement_matrix = []
     for i, response_text in enumerate(responses):
         mapping_result = ollama_client.map_response_to_statements(response_text, statements)
+        # Use actual user_id if available, otherwise fall back to index-based ID
+        actual_user_id = user_ids[i] if user_ids and i < len(user_ids) else f"participant_{i+1}"
         user_statement_matrix.append({
-            "user_id": f"participant_{i+1}",  # Using index as a placeholder user ID
+            "user_id": actual_user_id,
             "response": response_text,
             "mapping": mapping_result.get("mapping", [])
         })
@@ -631,11 +633,11 @@ def _run_polis_analysis(responses: List[str]):
 
     return {
         "statements": statements,
-        "user_positions": analysis_results
+        "analysis_results": analysis_results
     }
 
 
-@router.post("/ai/polis-analysis/event/{event_id}/round/{round_number}")
+@router.get("/ai/polis-analysis/{event_id}/{round_number}")
 async def polis_analysis_for_event_round(event_id: str, round_number: int, db: Session = Depends(get_local_db)):
     """
     Performs a Polis-style analysis on a round of responses for a specific event.
@@ -643,15 +645,18 @@ async def polis_analysis_for_event_round(event_id: str, round_number: int, db: S
     try:
         # Get responses for this specific round
         responses_result = db.execute(text("""
-            SELECT r.content
+            SELECT r.content, r.user_id
             FROM responses r
-            WHERE r.event_id = :event_id AND r.round_number = :round_number
+            JOIN inquiries i ON r.inquiry_id = i.id
+            WHERE i.event_id = :event_id AND i.round_number = :round_number
         """), {"event_id": event_id, "round_number": round_number})
-        responses = [row[0] for row in responses_result.fetchall()]
+        response_rows = responses_result.fetchall()
+        responses = [row.content for row in response_rows]
+        user_ids = [row.user_id for row in response_rows]
         
         if not responses:
             raise HTTPException(status_code=404, detail="No responses found for this event round.")
 
-        return _run_polis_analysis(responses)
+        return _run_polis_analysis(responses, user_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Polis-style analysis for event round failed: {str(e)}") 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import OpinionClusterMap from './OpinionClusterMap';
 import './DialogueRounds.css';
 
 interface Inquiry {
@@ -30,12 +31,7 @@ interface DialogueRoundsProps {
   isAdmin?: boolean; // Simulate admin for now
 }
 
-// Add migration logic at the top of the file (after imports)
-// Migrate old session code key to new one if needed
-const oldSessionCode = localStorage.getItem('census_session_code');
-if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
-  localStorage.setItem('cosenseus_session_code', oldSessionCode);
-}
+// Migration logic moved to useEffect hook for proper cleanup
 
 const DialogueRounds: React.FC<DialogueRoundsProps> = ({ 
   eventId, 
@@ -57,6 +53,15 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   const [feedback, setFeedback] = useState<string>('');
   const [pollInterval, setPollInterval] = useState<any>(null);
   const [isWaitingForNextRound, setIsWaitingForNextRound] = useState(false);
+
+  // Migration logic: migrate old session code if needed
+  useEffect(() => {
+    const oldSessionCode = localStorage.getItem('census_session_code');
+    if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
+      localStorage.setItem('cosenseus_session_code', oldSessionCode);
+      localStorage.removeItem('census_session_code');
+    }
+  }, []);
 
   console.log(
     '[DialogueRounds Render] EventID:', eventId, 
@@ -89,7 +94,20 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
 
   useEffect(() => {
     // On mount, load from localStorage and then start polling
-    const saved = localStorage.getItem(`census_dialogue_${eventId}`);
+    // Migrate old dialogue storage key if it exists
+    const oldDialogueKey = `census_dialogue_${eventId}`;
+    const newDialogueKey = `cosenseus_dialogue_${eventId}`;
+    
+    const oldSaved = localStorage.getItem(oldDialogueKey);
+    const newSaved = localStorage.getItem(newDialogueKey);
+    
+    if (oldSaved && !newSaved) {
+      // Migrate old data to new key
+      localStorage.setItem(newDialogueKey, oldSaved);
+      localStorage.removeItem(oldDialogueKey);
+    }
+    
+    const saved = localStorage.getItem(newDialogueKey);
     if (saved) {
       const parsed = JSON.parse(saved);
       setCurrentRound(parsed.currentRound || 1);
@@ -270,7 +288,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
       currentRound,
       responses
     });
-    localStorage.setItem(`census_dialogue_${eventId}`, dataToSave);
+    localStorage.setItem(`cosenseus_dialogue_${eventId}`, dataToSave);
   }, [currentRound, responses, eventId]);
 
   // 2. Add banners/instructions for each step
@@ -413,6 +431,14 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
                     ))}
                   </ul>
                 </div>
+              </div>
+              
+              {/* Opinion Cluster Map from Polis-style analysis */}
+              <div className="analysis-card full-width">
+                <OpinionClusterMap 
+                  eventId={eventId} 
+                  roundNumber={currentRound - 1}
+                />
               </div>
               
               {/* Dialogue prompts for this round */}

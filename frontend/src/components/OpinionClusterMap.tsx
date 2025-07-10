@@ -46,15 +46,43 @@ const OpinionClusterMap: React.FC<OpinionClusterMapProps> = ({ eventId, roundNum
   }, [eventId, roundNumber]);
 
   if (loading) {
-    return <div>Loading Opinion Map...</div>;
+    return (
+      <div className="opinion-cluster-map-container">
+        <div className="ocm-header">
+          <h3>Opinion Cluster Map</h3>
+        </div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-color-secondary-dark)' }}>
+          Loading Opinion Map...
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error-message">Error: {error}</div>;
+    return (
+      <div className="opinion-cluster-map-container">
+        <div className="ocm-header">
+          <h3>Opinion Cluster Map</h3>
+        </div>
+        <div className="ocm-error-message">
+          <p>Unable to load opinion analysis</p>
+          <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>{error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!analysisData || !analysisData.analysis_results || !analysisData.analysis_results.users) {
-    return <div>No analysis data available for this round.</div>;
+    return (
+      <div className="opinion-cluster-map-container">
+        <div className="ocm-header">
+          <h3>Opinion Cluster Map</h3>
+        </div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-color-secondary-dark)' }}>
+          No analysis data available for this round. Responses are needed to generate opinion clusters.
+        </div>
+      </div>
+    );
   }
 
   const { statements, analysis_results } = analysisData;
@@ -75,28 +103,34 @@ const OpinionClusterMap: React.FC<OpinionClusterMapProps> = ({ eventId, roundNum
       };
     }
     // Type assertion to tell TypeScript that acc[clusterIndex] is now defined and has these properties
-    const currentTrace = acc[clusterIndex] as { x: (string | number | Date)[]; y: (string | number | Date)[]; text: string; };
+    const currentTrace = acc[clusterIndex] as { x: (string | number | Date)[]; y: (string | number | Date)[]; text: (string | number | Date)[]; };
     if(currentTrace.x && currentTrace.y && currentTrace.text) {
       (currentTrace.x as (string|number|Date)[]).push(user.x);
       (currentTrace.y as (string|number|Date)[]).push(user.y);
-      (currentTrace.text as string) += user.response + '<br>';
+      (currentTrace.text as (string|number|Date)[]).push(user.response);
     }
     return acc;
   }, []);
 
   return (
-    <div className="opinion-cluster-map">
-      <h3>Opinion Cluster Map</h3>
-      <Plot
-        data={plotData}
-        layout={{
-          title: 'Participant Opinion Clusters',
-          xaxis: { title: 'Principal Component 1' },
-          yaxis: { title: 'Principal Component 2' },
-          hovermode: 'closest'
-        }}
-        config={{ responsive: true }}
-      />
+    <div className="opinion-cluster-map-container">
+      <div className="ocm-header">
+        <h3>Opinion Cluster Map</h3>
+      </div>
+      <div className="plot-container">
+        <Plot
+          data={plotData}
+          layout={{
+            title: 'Participant Opinion Clusters',
+            xaxis: { title: 'Principal Component 1' },
+            yaxis: { title: 'Principal Component 2' },
+            hovermode: 'closest',
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent'
+          }}
+          config={{ responsive: true }}
+        />
+      </div>
       <div className="statements-list">
         <h4>Key Statements</h4>
         <ol>

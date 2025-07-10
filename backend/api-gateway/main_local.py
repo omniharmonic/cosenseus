@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 import os
 import sys
+import socket
+import ipaddress
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -22,6 +24,41 @@ from routers.inquiries_local import router as inquiries_router # Add new inquiri
 
 # Import local database initialization
 from core.database_local import init_local_db
+
+def get_local_network_origins():
+    """Generate CORS origins for local network access"""
+    origins = [
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000"
+    ]
+    
+    try:
+        # Get local IP address
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        origins.append(f"http://{local_ip}:3000")
+        
+        # Add common local network ranges
+        network_ranges = [
+            "192.168.0.0/16",  # 192.168.x.x
+            "10.0.0.0/8",      # 10.x.x.x  
+            "172.16.0.0/12"    # 172.16.x.x - 172.31.x.x
+        ]
+        
+        for network_str in network_ranges:
+            network = ipaddress.IPv4Network(network_str, strict=False)
+            # Add a few common IPs from each range
+            for i in [1, 2, 100, 101, 254]:
+                try:
+                    test_ip = str(network.network_address + i)
+                    origins.append(f"http://{test_ip}:3000")
+                except:
+                    continue
+                    
+    except Exception as e:
+        print(f"Warning: Could not determine local network IPs: {e}")
+    
+    return origins
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,10 +85,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
+# Add CORS middleware with local network support  
+local_origins = get_local_network_origins()
+print(f"🌐 CORS enabled for origins: {local_origins[:5]}... ({len(local_origins)} total)")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=local_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

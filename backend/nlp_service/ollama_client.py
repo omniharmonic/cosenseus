@@ -422,5 +422,128 @@ Please generate the next set of inquiries."""
             logger.error(f"Consensus detection failed: {e}")
             return {"consensus_clusters": [], "summary": f"Error in consensus detection: {e}"}
 
+    def extract_statements(self, responses: List[str]) -> Dict[str, Any]:
+        """
+        Extract a concise list of key statements from a batch of responses.
+        
+        Args:
+            responses: List of response texts
+            
+        Returns:
+            Dict containing extracted statements
+        """
+        if not responses:
+            return {"statements": []}
+            
+        system_prompt = """You are an expert at extracting key statements from participant responses. Analyze the provided responses and identify 5-8 core statements that capture the main ideas and opinions expressed. Each statement should be:
+        - Concise and specific
+        - Representative of a distinct viewpoint
+        - Something people can agree or disagree with
+        
+        Return a JSON response with the following structure:
+        {
+            "statements": [
+                "Clear, concise statement 1",
+                "Clear, concise statement 2",
+                ...
+            ]
+        }"""
+        
+        responses_text = "\n".join([f"Response {i+1}: {response}" for i, response in enumerate(responses)])
+        prompt = f"Extract key statements from these responses:\n\n{responses_text}"
+        
+        try:
+            response = self.generate_response(prompt, system_prompt)
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed_result = json.loads(json_str)
+                statements = parsed_result.get("statements", [])
+                # Ensure we have a reasonable number of statements
+                if len(statements) > 10:
+                    statements = statements[:10]
+                elif len(statements) < 3:
+                    # Generate some default statements if too few
+                    statements.extend([
+                        "This issue affects our community",
+                        "Action is needed to address this concern",
+                        "Multiple perspectives should be considered"
+                    ])
+                return {"statements": statements}
+            else:
+                logger.warning(f"No valid JSON found in statement extraction: {response}")
+                return {"statements": ["Unable to extract statements"]}
+        except Exception as e:
+            logger.error(f"Statement extraction failed: {e}")
+            return {"statements": ["Error extracting statements"]}
+
+    def map_response_to_statements(self, response_text: str, statements: List[str]) -> Dict[str, Any]:
+        """
+        Map an individual response to the extracted statements.
+        
+        Args:
+            response_text: The individual response to map
+            statements: List of extracted statements
+            
+        Returns:
+            Dict containing the mapping results
+        """
+        if not statements:
+            return {"mapping": []}
+            
+        system_prompt = """You are an expert at analyzing how participant responses relate to key statements. For each statement provided, determine whether the given response agrees, disagrees, or is neutral/passes on that statement.
+
+        Return a JSON response with the following structure:
+        {
+            "mapping": [
+                {
+                    "statement": "exact statement text",
+                    "position": "agree|disagree|pass"
+                }
+            ]
+        }
+        
+        Guidelines:
+        - "agree": The response clearly supports or aligns with the statement
+        - "disagree": The response clearly opposes or contradicts the statement  
+        - "pass": The response is neutral, unclear, or doesn't address the statement"""
+        
+        statements_text = "\n".join([f"{i+1}. {stmt}" for i, stmt in enumerate(statements)])
+        prompt = f"""Response to analyze: "{response_text}"
+
+Statements to map against:
+{statements_text}
+
+For each statement, determine if the response agrees, disagrees, or passes."""
+        
+        try:
+            response = self.generate_response(prompt, system_prompt)
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed_result = json.loads(json_str)
+                mapping = parsed_result.get("mapping", [])
+                
+                # Ensure all statements are covered
+                covered_statements = {m.get("statement", "") for m in mapping}
+                for statement in statements:
+                    if statement not in covered_statements:
+                        mapping.append({
+                            "statement": statement,
+                            "position": "pass"
+                        })
+                
+                return {"mapping": mapping}
+            else:
+                logger.warning(f"No valid JSON found in response mapping: {response}")
+                # Return default pass mapping for all statements
+                return {"mapping": [{"statement": stmt, "position": "pass"} for stmt in statements]}
+        except Exception as e:
+            logger.error(f"Response mapping failed: {e}")
+            # Return default pass mapping for all statements
+            return {"mapping": [{"statement": stmt, "position": "pass"} for stmt in statements]}
+
 # Global Ollama client instance
 ollama_client = OllamaClient() 

@@ -166,4 +166,94 @@
   font-size: 1rem;
   max-width: 500px;
   margin: 0 auto;
+}
+
+/* Analysis Dashboard */
+.analysis-dashboard {
+  background: var(--card-background-color-dark);
+  border-radius: var(--border-radius-large);
+  padding: var(--spacing-unit-4);
+  margin-bottom: var(--spacing-unit-4);
+  border: 1px solid var(--border-color-dark);
+  box-shadow: var(--shadow-medium);
+}
+
+.analysis-dashboard h2 {
+  margin: 0 0 var(--spacing-unit-3) 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-color-primary-dark);
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-unit-3);
+  margin-bottom: var(--spacing-unit-4);
+}
+
+.analysis-card {
+  background: var(--secondary-color);
+  border-radius: var(--border-radius-medium);
+  padding: var(--spacing-unit-3);
+  border: 1px solid var(--border-color-dark);
+}
+
+.analysis-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.analysis-card h3 {
+  margin: 0 0 var(--spacing-unit-2) 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color-primary-dark);
+}
+
+.analysis-card ul {
+  margin: 0;
+  padding-left: var(--spacing-unit-3);
+}
+
+.analysis-card li {
+  margin-bottom: var(--spacing-unit);
+  line-height: 1.5;
+  color: var(--text-color-secondary-dark);
+}
+
+.next-round-prompts {
+  background: var(--background-color-dark);
+  border-radius: var(--border-radius-medium);
+  padding: var(--spacing-unit-3);
+  border: 1px solid var(--primary-color);
+  border-left: 4px solid var(--primary-color);
+}
+
+.next-round-prompts h3 {
+  margin: 0 0 var(--spacing-unit-2) 0;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.next-round-prompts ul {
+  margin: 0 0 var(--spacing-unit-2) 0;
+  padding-left: var(--spacing-unit-3);
+}
+
+.dialogue-prompt {
+  margin-bottom: var(--spacing-unit-2);
+  line-height: 1.5;
+  color: var(--text-color-secondary-dark);
+}
+
+.dialogue-prompt strong {
+  color: var(--text-color-primary-dark);
+}
+
+.prompt-instructions {
+  font-style: italic;
+  color: var(--text-color-secondary-dark);
+  font-size: 0.9rem;
+  margin: 0;
 } 
