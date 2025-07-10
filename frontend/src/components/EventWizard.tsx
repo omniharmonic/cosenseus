@@ -90,6 +90,12 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
     }
 
     if (step === 3) {
+      // Add a default inquiry if none exist and we are submitting.
+      if (formData.inquiries.length === 0) {
+        addInquiry(true); // Add a non-empty default
+        return true; // Assume it's valid, it will be populated
+      }
+
       formData.inquiries.forEach((inquiry, index) => {
         if (!inquiry.title.trim()) {
           newErrors[`inquiry_${index}_title`] = `Inquiry ${index + 1} title is required`;
@@ -134,8 +140,14 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
     }
   };
 
-  const addInquiry = () => {
-    const newInquiry: Inquiry = {
+  const addInquiry = (isDefault = false) => {
+    const newInquiry: Inquiry = isDefault ? {
+      title: 'General Feedback',
+      content: 'What are your general thoughts or feedback on the topic of this event?',
+      inquiry_type: 'open_ended',
+      required: true,
+      order_index: formData.inquiries.length
+    } : {
       title: '',
       content: '',
       inquiry_type: 'open_ended',
@@ -331,38 +343,35 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
     </div>
   );
 
-  const renderStep3 = () => (
-    <div className="step-content">
-      <h3>Event Inquiries</h3>
-      <p>Create questions or prompts for participants to respond to:</p>
-      
-      {errors.inquiries && <div className="error-text">{errors.inquiries}</div>}
-      
+  const renderInquiries = () => (
+    <div className="inquiry-list">
       {formData.inquiries.map((inquiry, index) => (
         <div key={index} className="inquiry-item">
           <div className="inquiry-header">
             <h4>Inquiry {index + 1}</h4>
-            <div className="inquiry-controls">
-              <button
-                type="button"
-                onClick={() => moveInquiry(index, 'up')}
-                disabled={index === 0}
-                className="move-btn"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => moveInquiry(index, 'down')}
-                disabled={index === formData.inquiries.length - 1}
-                className="move-btn"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => removeInquiry(index)}
-                className="remove-btn"
+            <div className="inquiry-actions">
+              <div>
+                <button 
+                  type="button" 
+                  onClick={() => moveInquiry(index, 'up')} 
+                  disabled={index === 0}
+                  className="btn btn-icon"
+                >
+                  ↑
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => moveInquiry(index, 'down')} 
+                  disabled={index === formData.inquiries.length - 1}
+                  className="btn btn-icon"
+                >
+                  ↓
+                </button>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => removeInquiry(index)} 
+                className="btn btn-danger btn-sm"
               >
                 Remove
               </button>
@@ -425,12 +434,15 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
           </div>
         </div>
       ))}
-      
-      <button
-        type="button"
-        onClick={addInquiry}
-        className="add-inquiry-btn"
-      >
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="step-content">
+      <h3>Define Inquiries</h3>
+      <p>Add the questions you want to ask participants. If you add no questions, a default "General Feedback" question will be used.</p>
+      {renderInquiries()}
+      <button type="button" onClick={() => addInquiry()} className="btn btn-secondary">
         + Add Inquiry
       </button>
     </div>
@@ -438,13 +450,10 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
 
   return (
     <div className="event-wizard">
-      <div className="wizard-header">
-        <h2>Create New Event</h2>
-        <div className="step-indicator">
-          <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>1</div>
-          <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2</div>
-          <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3</div>
-        </div>
+      <div className="wizard-progress">
+        <div className={`progress-step ${currentStep >= 1 ? 'active' : ''}`}>1. Basics</div>
+        <div className={`progress-step ${currentStep >= 2 ? 'active' : ''}`}>2. Schedule</div>
+        <div className={`progress-step ${currentStep >= 3 ? 'active' : ''}`}>3. Inquiries</div>
       </div>
 
       <div className="wizard-content">
@@ -453,47 +462,25 @@ const EventWizard: React.FC<EventWizardProps> = ({ onSubmit, isLoading = false, 
         {currentStep === 3 && renderStep3()}
       </div>
 
-      <div className="wizard-footer">
-        <div className="button-group">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          )}
-          
+      <div className="wizard-navigation">
+        {onCancel && (
+          <button onClick={onCancel} className="btn btn-secondary" disabled={isLoading}>
+            Cancel
+          </button>
+        )}
+        <div className="nav-right">
           {currentStep > 1 && (
-            <button
-              type="button"
-              onClick={handlePrev}
-              className="btn-secondary"
-              disabled={isLoading}
-            >
+            <button onClick={handlePrev} className="btn btn-secondary" disabled={isLoading}>
               Previous
             </button>
           )}
-          
           {currentStep < 3 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="btn-primary"
-              disabled={isLoading}
-            >
+            <button onClick={handleNext} className="btn btn-primary">
               Next
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="btn-primary"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Creating...' : 'Create Event'}
+            <button onClick={handleSubmit} className="btn btn-primary" disabled={isLoading}>
+              {isLoading ? 'Submitting...' : 'Create Event'}
             </button>
           )}
         </div>

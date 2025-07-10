@@ -34,8 +34,9 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   eventId, 
   onComplete, 
   onBack,
-  isAdmin = false
+  isAdmin = false,
 }) => {
+  const isParticipant = !isAdmin;
   const [currentRound, setCurrentRound] = useState(1);
   const [roundStatus, setRoundStatus] = useState<'waiting_for_responses' | 'in_analysis' | 'admin_review' | 'completed'>('waiting_for_responses');
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -340,7 +341,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
         <div className="error-state">
           <h3>Error Loading Dialogue</h3>
           <p>{typeof error === 'string' ? error : JSON.stringify(error, null, 2) || 'Event not found'}</p>
-          <button className="btn-primary" onClick={onBack}>
+          <button className="btn btn-primary" onClick={onBack}>
             Back to Event Details
           </button>
         </div>
@@ -363,7 +364,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     return (
       <div className="dialogue-rounds-container">
         <div className="rounds-header">
-          <button className="back-button" onClick={onBack}>
+          <button className="btn btn-secondary btn-sm back-button" onClick={onBack}>
             ← Back to Event
           </button>
           <div className="rounds-progress">
@@ -460,21 +461,53 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
           </div>
           
           {/* Action buttons */}
-          <div className="rounds-actions">
-            <button 
-              className="btn-secondary"
-              onClick={onBack}
-              disabled={submitting || analyzing}
-            >
-              Save & Exit
-            </button>
-            <button 
-              className="btn-primary"
-              onClick={submitRoundResponses}
-              disabled={submitting || analyzing || !inquiries.every(inq => responses[inq.id]?.trim())}
-            >
-              {submitting ? 'Submitting...' : 'Submit Responses'}
-            </button>
+          <div className="rounds-footer">
+            <div className="feedback-section">
+              <textarea 
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Provide feedback on the analysis or suggest a direction for the next round..."
+              />
+              <button 
+                className="btn btn-secondary"
+                onClick={() => submitFeedback('feedback-inquiry-id')} // Replace with a real inquiry ID if available
+                disabled={!feedback.trim()}
+              >
+                Submit Feedback
+              </button>
+            </div>
+
+            <div className="rounds-actions">
+              {isParticipant && roundStatus === 'waiting_for_responses' && (
+                <>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={onBack}
+                    disabled={submitting || analyzing}
+                  >
+                    Save & Exit
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={submitRoundResponses}
+                    disabled={submitting || analyzing || !inquiries.every(inq => responses[inq.id]?.trim())}
+                  >
+                    {submitting ? 'Submitting...' : `Submit Round ${currentRound} Responses`}
+                  </button>
+                </>
+              )}
+
+              {isAdmin && (
+                <>
+                  <button className="btn btn-secondary" onClick={onBack}>
+                    Back to Event
+                  </button>
+                  <button className="btn btn-primary" onClick={advanceRound} disabled={analyzing}>
+                    {analyzing ? 'Analyzing...' : `End Round ${currentRound} & Analyze`}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -486,7 +519,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     return (
       <div className="dialogue-rounds-container">
         <div className="rounds-header">
-          <button className="back-button" onClick={onBack}>
+          <button className="btn btn-secondary btn-sm back-button" onClick={onBack}>
             ← Back to Event
           </button>
           <div className="rounds-progress">
@@ -498,53 +531,45 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
           <div className="banner">
             <p>{getBanner()}</p>
           </div>
-          <div className="waiting-state">
-            <div className="waiting-icon">⏳</div>
-            <h2>Processing Your Responses</h2>
-            <p>Thank you for your participation! The AI is analyzing all responses to identify key themes and areas of agreement.</p>
-            <div className="waiting-details">
-              <p><strong>What happens next:</strong></p>
-              <ul>
-                <li>AI analysis of all participant responses</li>
-                <li>Identification of key themes and consensus points</li>
-                <li>Generation of focus areas for the next round</li>
-                <li>Preparation of the next round of questions</li>
-              </ul>
-            </div>
-            <p className="waiting-note">This page will automatically update when the next round is ready.</p>
+          <div className="waiting-for-analysis">
+            <h3>Round {currentRound} is in analysis.</h3>
+            <p>The moderator is reviewing the results. The next round will begin shortly.</p>
+            <div className="loading-spinner"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Completed
-  if (roundStatus === 'completed') {
-    return (
-      <div className="dialogue-rounds-container">
-        <div className="rounds-header">
-          <button className="back-button" onClick={onBack}>
+  // Dialogue has ended
+  return (
+    <div className="dialogue-rounds-container">
+      <div className="rounds-header">
+          <button className="btn btn-secondary btn-sm back-button" onClick={onBack}>
             ← Back to Event
           </button>
-          <div className="rounds-progress">
-            <h1>Dialogue Completed</h1>
-          </div>
+        <div className="rounds-progress">
+          <h1>Dialogue Complete</h1>
+          {renderProgress()}
         </div>
-        <div className="dialogue-content">
-          <div className="banner">
-            <p>{getBanner()}</p>
-          </div>
-          <h2>Thank you for participating!</h2>
-          <p>The dialogue session is now complete. You can review the results and analysis in the event results dashboard.</p>
-          <button className="btn-primary" onClick={onComplete}>
-            Go to Results
+      </div>
+      <div className="dialogue-content">
+        <div className="banner">
+          <p>{getBanner()}</p>
+        </div>
+        <div className="final-analysis">
+          <h2>Final Analysis & Report</h2>
+          <p>The dialogue has concluded. Here are the final insights from all rounds.</p>
+          {/* You could map over all roundAnalyses here to show a full report */}
+        </div>
+        <div className="rounds-actions">
+          <button className="btn btn-primary" onClick={onComplete}>
+            Complete Dialogue & View Final Report
           </button>
         </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 };
 
 export default DialogueRounds; 

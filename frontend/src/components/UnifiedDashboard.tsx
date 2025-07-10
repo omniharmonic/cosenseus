@@ -78,13 +78,13 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCr
               <div className="event-actions">
                 {isOrganizer ? (
                   <>
-                    <button onClick={() => onEventSelect(event.id, 'view')}>Manage</button>
-                    <button onClick={() => handleDelete(event.id)} className="btn-danger">Delete</button>
+                    <button className="btn btn-secondary" onClick={() => onEventSelect(event.id, 'view')}>Manage</button>
+                    <button onClick={() => handleDelete(event.id)} className="btn btn-danger">Delete</button>
                   </>
                 ) : (
-                  <button onClick={() => onEventSelect(event.id, 'participate')}>Join</button>
+                  <button className="btn btn-primary" onClick={() => onEventSelect(event.id, 'participate')}>Join</button>
                 )}
-                <button onClick={() => onEventSelect(event.id, 'dialogue')}>View Results</button>
+                <button className="btn btn-secondary" onClick={() => onEventSelect(event.id, 'dialogue')}>View Results</button>
               </div>
             </div>
           </div>
@@ -106,13 +106,13 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCr
       <h2>Your Dashboard</h2>
       <div className="dashboard-tabs">
         <button 
-          className={activeTab === 'admin' ? 'active' : ''}
+          className={`btn ${activeTab === 'admin' ? 'active' : ''}`}
           onClick={() => setActiveTab('admin')}
         >
           Organizing ({organizedEvents.length})
         </button>
         <button
-          className={activeTab === 'participant' ? 'active' : ''}
+          className={`btn ${activeTab === 'participant' ? 'active' : ''}`}
           onClick={() => setActiveTab('participant')}
         >
           Participating ({participatingEvents.length})

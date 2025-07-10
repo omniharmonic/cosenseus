@@ -63,7 +63,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ template, onSave, onCan
 
       {/* The actual save/cancel buttons are part of the EventWizard now */}
       {/* We can add a top-level cancel if needed */}
-      <button onClick={onCancel} className="btn-secondary" style={{marginTop: '20px'}}>
+      <button onClick={onCancel} className="btn btn-secondary" style={{marginTop: '20px'}}>
         Cancel
       </button>
     </div>

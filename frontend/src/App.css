@@ -67,12 +67,6 @@
   gap: var(--spacing-unit-2);
 }
 
-.nav-signout {
-  /* This now uses .btn and .btn-secondary from index.css */
-  padding: var(--spacing-unit) var(--spacing-unit-2);
-  font-size: 0.9rem;
-}
-
 .user-display-name {
   color: var(--text-color-secondary-dark);
 }

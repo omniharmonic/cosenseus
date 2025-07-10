@@ -107,8 +107,8 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onBack }) => {
                 <p>{template.description}</p>
               </div>
               <div className="tm-card-actions">
-                <button className="btn-secondary" onClick={() => handleEdit(template)}>Edit</button>
-                <button className="btn-danger" onClick={() => handleDelete(template.id)}>Delete</button>
+                <button className="btn btn-secondary" onClick={() => handleEdit(template)}>Edit</button>
+                <button className="btn btn-danger" onClick={() => handleDelete(template.id)}>Delete</button>
               </div>
             </div>
           ))}

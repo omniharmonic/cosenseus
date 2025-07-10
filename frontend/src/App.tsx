@@ -151,7 +151,7 @@ const Navigation: React.FC = () => {
       <div className="nav-user">
         <span className="user-role">{user ? 'user' : 'anonymous'}</span>
         <span className="user-name">{user?.display_name || 'Anonymous'}</span>
-        <button className="nav-signout" onClick={handleSignOut}>
+        <button className="btn btn-secondary btn-sm" onClick={handleSignOut}>
           Sign Out
         </button>
       </div>
