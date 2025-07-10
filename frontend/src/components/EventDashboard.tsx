@@ -36,6 +36,12 @@ const EventDashboard: React.FC<EventDashboardProps> = ({
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editingEventFormData, setEditingEventFormData] = useState<any | null>(null);
 
+  // Add migration logic at the top of the file (after imports)
+  const oldSessionCode = localStorage.getItem('census_session_code');
+  if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
+    localStorage.setItem('cosenseus_session_code', oldSessionCode);
+  }
+
   // Real API functions
   const fetchEvents = async () => {
     setLoading(true);
@@ -61,7 +67,7 @@ const EventDashboard: React.FC<EventDashboardProps> = ({
     try {
       setLoading(true);
 
-      const sessionCode = localStorage.getItem('census_session_code');
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
       if (!sessionCode) {
         setError("You must be logged in to create an event.");
         setLoading(false);

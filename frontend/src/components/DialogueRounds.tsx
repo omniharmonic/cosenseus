@@ -30,6 +30,13 @@ interface DialogueRoundsProps {
   isAdmin?: boolean; // Simulate admin for now
 }
 
+// Add migration logic at the top of the file (after imports)
+// Migrate old session code key to new one if needed
+const oldSessionCode = localStorage.getItem('census_session_code');
+if (oldSessionCode && !localStorage.getItem('cosenseus_session_code')) {
+  localStorage.setItem('cosenseus_session_code', oldSessionCode);
+}
+
 const DialogueRounds: React.FC<DialogueRoundsProps> = ({ 
   eventId, 
   onComplete, 
@@ -158,7 +165,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     if (Object.keys(responses).length > 0) {
       setSubmitting(true);
       try {
-        const sessionCode = localStorage.getItem('census_session_code');
+        const sessionCode = localStorage.getItem('cosenseus_session_code');
         if (!sessionCode) {
           setError('No active session. Please log in again.');
           setSubmitting(false);

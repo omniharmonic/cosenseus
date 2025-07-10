@@ -645,6 +645,7 @@ async def polis_analysis_for_event_round(event_id: str, round_number: int, db: S
     Performs a Polis-style analysis on a round of responses for a specific event.
     """
     try:
+        from sqlalchemy import text
         # Get responses for this specific round
         responses_result = db.execute(text("""
             SELECT r.content
