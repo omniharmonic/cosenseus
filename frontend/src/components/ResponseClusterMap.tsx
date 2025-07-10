@@ -47,9 +47,47 @@ const ResponseClusterMap: React.FC<ResponseClusterMapProps> = ({ eventId }) => {
     fetchAndCluster();
   }, [eventId]);
 
-  if (loading) return <div>Loading cluster map...</div>;
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (!clusterData || !Array.isArray(clusterData.clusters) || clusterData.clusters.length === 0) return <div>No cluster data available.</div>;
+  if (loading) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>🎯 Response Cluster Map</h3>
+        </div>
+        <div className="loading-state">
+          <div className="loading-spinner small"></div>
+          <p>Loading cluster map...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>🎯 Response Cluster Map</h3>
+        </div>
+        <div className="error-state">
+          <p>⚠️ Failed to load cluster map</p>
+          <p className="error-text">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!clusterData || !Array.isArray(clusterData.clusters) || clusterData.clusters.length === 0) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>🎯 Response Cluster Map</h3>
+        </div>
+        <div className="empty-state">
+          <p>No cluster data available yet.</p>
+          <p>Response clusters will appear as participants submit responses.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Prepare data for Plotly
   const traces = (clusterData.clusters || []).map((cluster: any, idx: number) => ({
@@ -64,34 +102,38 @@ const ResponseClusterMap: React.FC<ResponseClusterMapProps> = ({ eventId }) => {
   }));
 
   return (
-    <div style={{ width: '100%', minHeight: 300, padding: 16 }}>
-      <h3>Response Cluster Map</h3>
-      <Plot
-        data={traces}
-        layout={{
-          autosize: true,
-          margin: { l: 50, r: 50, t: 50, b: 100 },
-          title: 'Clusters of Participant Responses',
-          xaxis: { title: 'Dimension 1' },
-          yaxis: { title: 'Dimension 2' },
-          legend: { 
-            orientation: 'h',
-            x: 0.5,
-            xanchor: 'center',
-            y: -0.2
-          },
-          paper_bgcolor: 'transparent',
-          plot_bgcolor: 'transparent',
-          font: { color: '#F2F2F7' }
-        }}
-        config={{ 
-          responsive: true,
-          displayModeBar: false,
-          staticPlot: false
-        }}
-        useResizeHandler={true}
-        style={{ width: '100%', height: '100%' }}
-      />
+    <div className="visualization-container">
+      <div className="card-header">
+        <h3>🎯 Response Cluster Map</h3>
+      </div>
+      <div className="visualization-content">
+        <Plot
+          data={traces}
+          layout={{
+            autosize: true,
+            margin: { l: 50, r: 50, t: 50, b: 100 },
+            title: 'Clusters of Participant Responses',
+            xaxis: { title: 'Dimension 1' },
+            yaxis: { title: 'Dimension 2' },
+            legend: { 
+              orientation: 'h',
+              x: 0.5,
+              xanchor: 'center',
+              y: -0.2
+            },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#F2F2F7' }
+          }}
+          config={{ 
+            responsive: true,
+            displayModeBar: false,
+            staticPlot: false
+          }}
+          useResizeHandler={true}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
     </div>
   );
 };

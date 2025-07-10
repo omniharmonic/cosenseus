@@ -41,9 +41,47 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
     fetchTimeline();
   }, [eventId]);
 
-  if (loading) return <div>Loading sentiment timeline...</div>;
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (!timeline || timeline.length === 0) return <div>No sentiment data available.</div>;
+  if (loading) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📊 Sentiment Timeline</h3>
+        </div>
+        <div className="loading-state">
+          <div className="loading-spinner small"></div>
+          <p>Loading sentiment timeline...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📊 Sentiment Timeline</h3>
+        </div>
+        <div className="error-state">
+          <p>⚠️ Failed to load sentiment timeline</p>
+          <p className="error-text">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!timeline || timeline.length === 0) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📊 Sentiment Timeline</h3>
+        </div>
+        <div className="empty-state">
+          <p>No sentiment data available yet.</p>
+          <p>Sentiment analysis will appear as participants submit responses.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Prepare data for Plotly
   const x = timeline.map((point) => point.created_at);
@@ -51,9 +89,12 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
   const text = timeline.map((point) => `Sentiment: ${point.sentiment}\nConfidence: ${point.confidence}\n${point.summary}`);
 
   return (
-    <div style={{ width: '100%', minHeight: 300, padding: 16 }}>
-      <h3>Sentiment Timeline</h3>
-      <Plot
+    <div className="visualization-container">
+      <div className="card-header">
+        <h3>📊 Sentiment Timeline</h3>
+      </div>
+      <div className="visualization-content">
+        <Plot
         data={[{
           x,
           y,
@@ -85,6 +126,7 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
         useResizeHandler={true}
         style={{ width: '100%', height: '100%' }}
       />
+      </div>
     </div>
   );
 };

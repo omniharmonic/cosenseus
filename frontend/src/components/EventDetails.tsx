@@ -540,8 +540,13 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               className="refresh-btn"
               onClick={fetchEventAnalysis}
               disabled={analysisLoading}
+              title="Refresh Analysis"
             >
-              {analysisLoading ? '🔄' : '🔄'}
+              {analysisLoading ? (
+                <div className="loading-spinner small"></div>
+              ) : (
+                '🔄'
+              )}
             </button>
           </div>
 
@@ -550,19 +555,36 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="loading-spinner small"></div>
               <p>Analyzing responses...</p>
             </div>
-          ) : analysis && analysis.analysis ? (
+          ) : error && !analysis ? (
+            <div className="error-state">
+              <p>⚠️ Analysis failed to load</p>
+              <p className="error-text">{error}</p>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={fetchEventAnalysis}
+              >
+                Try Again
+              </button>
+            </div>
+          ) : analysis?.analysis ? (
             <div className="analysis-content">
               <div className="analysis-summary">
-                <p><strong>Summary:</strong> {analysis.analysis.summary}</p>
-                <p><strong>Sentiment:</strong> {analysis.analysis.participant_sentiment}</p>
-                <p><strong>Responses:</strong> {analysis.response_count}</p>
+                {analysis.analysis.summary && (
+                  <p><strong>Summary:</strong> {analysis.analysis.summary}</p>
+                )}
+                {analysis.analysis.participant_sentiment && (
+                  <p><strong>Sentiment:</strong> {analysis.analysis.participant_sentiment}</p>
+                )}
+                {typeof analysis.response_count === 'number' && (
+                  <p><strong>Responses:</strong> {analysis.response_count}</p>
+                )}
               </div>
 
               {Array.isArray(analysis.analysis.key_themes) && analysis.analysis.key_themes.length > 0 && (
                 <div className="analysis-section">
                   <h4>Key Themes</h4>
                   <ul>
-                    {analysis.analysis.key_themes.map((theme, index) => (
+                    {analysis.analysis.key_themes.filter(theme => theme && theme.trim()).map((theme, index) => (
                       <li key={index}>{theme}</li>
                     ))}
                   </ul>
@@ -573,7 +595,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
                 <div className="analysis-section">
                   <h4>Common Concerns</h4>
                   <ul>
-                    {analysis.analysis.common_concerns.map((concern, index) => (
+                    {analysis.analysis.common_concerns.filter(concern => concern && concern.trim()).map((concern, index) => (
                       <li key={index}>{concern}</li>
                     ))}
                   </ul>
@@ -584,10 +606,21 @@ const EventDetails: React.FC<EventDetailsProps> = ({
                 <div className="analysis-section">
                   <h4>Suggested Actions</h4>
                   <ul>
-                    {analysis.analysis.suggested_actions.map((action, index) => (
+                    {analysis.analysis.suggested_actions.filter(action => action && action.trim()).map((action, index) => (
                       <li key={index}>{action}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+              
+              {/* Show empty state if all arrays are empty */}
+              {(!analysis.analysis.key_themes?.length && 
+                !analysis.analysis.common_concerns?.length && 
+                !analysis.analysis.suggested_actions?.length && 
+                !analysis.analysis.summary) && (
+                <div className="empty-state">
+                  <p>Analysis completed but no specific insights were generated.</p>
+                  <p>This might indicate insufficient response data or processing issues.</p>
                 </div>
               )}
             </div>
@@ -599,31 +632,46 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
         </div>
 
-        {/* Cluster Map Visualization */}
+        {/* Data Visualizations */}
         {(event.status === 'active' || event.status === 'completed') && (
-          <div className="info-card">
-            <ResponseClusterMap eventId={eventId} />
-          </div>
-        )}
+          <>
+            {/* Cluster Map Visualization */}
+            <div className="info-card visualization-card">
+              <div className="visualization-wrapper">
+                <ResponseClusterMap eventId={eventId} />
+              </div>
+            </div>
 
-        {/* Sentiment Timeline Visualization */}
-        {(event.status === 'active' || event.status === 'completed') && (
-          <div className="info-card">
-            <SentimentTimeline eventId={eventId} />
-          </div>
-        )}
+            {/* Sentiment Timeline Visualization */}
+            <div className="info-card visualization-card">
+              <div className="visualization-wrapper">
+                <SentimentTimeline eventId={eventId} />
+              </div>
+            </div>
 
-        {/* Word Cloud Visualization */}
-        {(event.status === 'active' || event.status === 'completed') && (
-          <div className="info-card">
-            <WordCloud eventId={eventId} />
-          </div>
-        )}
+            {/* Word Cloud Visualization */}
+            <div className="info-card visualization-card">
+              <div className="visualization-wrapper">
+                <WordCloud eventId={eventId} />
+              </div>
+            </div>
 
-        {/* Consensus Graph Visualization */}
-        {(event.status === 'active' || event.status === 'completed') && (
+            {/* Consensus Graph Visualization */}
+            <div className="info-card visualization-card">
+              <div className="visualization-wrapper">
+                <ConsensusGraph eventId={eventId} />
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Show message for draft events */}
+        {event.status === 'draft' && (
           <div className="info-card">
-            <ConsensusGraph eventId={eventId} />
+            <div className="empty-state">
+              <h3>📊 Visualizations Coming Soon</h3>
+              <p>Data visualizations will be available once the event is published and participants begin responding.</p>
+            </div>
           </div>
         )}
       </div>
