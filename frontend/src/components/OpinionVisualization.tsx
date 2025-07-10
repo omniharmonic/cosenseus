@@ -333,7 +333,7 @@ const OpinionVisualization: React.FC<OpinionVisualizationProps> = ({
         <h3>Opinion Landscape</h3>
         <div className="visualization-controls">
           <button
-            className="control-button"
+            className="btn btn-secondary control-button"
             onClick={() => setSelectedCluster(null)}
             disabled={!selectedCluster}
           >

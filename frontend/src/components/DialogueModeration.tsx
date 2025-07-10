@@ -178,11 +178,11 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
             )}
             <div className="prompt-actions">
               {editingPromptIndex === index ? (
-                <button onClick={handleUpdateSynthesis} className="prompt-button save" disabled={isSaving}>
+                <button onClick={handleUpdateSynthesis} className="btn btn-primary prompt-button save" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save'}
                 </button>
               ) : (
-                <button onClick={() => setEditingPromptIndex(index)} className="prompt-button edit">
+                <button onClick={() => setEditingPromptIndex(index)} className="btn btn-secondary prompt-button edit">
                   Edit
                 </button>
               )}
@@ -192,7 +192,7 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
       </div>
       
       <div className="moderation-actions">
-        <button onClick={handleApproveSynthesis} disabled={isApproving || editingPromptIndex !== null} className="approve-button">
+        <button onClick={handleApproveSynthesis} disabled={isApproving || editingPromptIndex !== null} className="btn btn-primary approve-button">
           {isApproving ? 'Approving...' : `Approve & Start Round ${synthesis.round_number + 1}`}
         </button>
         {editingPromptIndex !== null && <p className="save-prompt-notice">Please save your changes before approving.</p>}

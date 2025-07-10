@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import OpinionVisualization from './OpinionVisualization';
+import ResponseClusterMap from './ResponseClusterMap';
+import SentimentTimeline from './SentimentTimeline';
+import WordCloud from './WordCloud';
+import ConsensusGraph from './ConsensusGraph';
+import OpinionClusterMap from './OpinionClusterMap';
 import { apiService } from '../services/api';
 import './AdvancedAI.css';
 
@@ -54,7 +59,7 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<'clustering' | 'entities' | 'consensus'>('clustering');
+  const [selectedAnalysis, setSelectedAnalysis] = useState<'clustering' | 'entities' | 'consensus' | 'visualizations'>('visualizations');
   const [processingStep, setProcessingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [responses, setResponses] = useState<OpinionResponse[]>([]);
@@ -212,7 +217,7 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
             </div>
           </div>
           <button
-            className="start-analysis-button"
+            className="btn btn-primary start-analysis-button"
             onClick={runAdvancedAnalysis}
             disabled={isProcessing}
           >
@@ -245,26 +250,68 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
         <div className="analysis-results">
           <div className="analysis-tabs">
             <button
+              className={`tab-button ${selectedAnalysis === 'visualizations' ? 'active' : ''}`}
+              onClick={() => setSelectedAnalysis('visualizations')}
+            >
+              📊 Data Visualizations
+            </button>
+            <button
               className={`tab-button ${selectedAnalysis === 'clustering' ? 'active' : ''}`}
               onClick={() => setSelectedAnalysis('clustering')}
             >
-              Opinion Clusters
+              🌳 Opinion Clusters
             </button>
             <button
               className={`tab-button ${selectedAnalysis === 'entities' ? 'active' : ''}`}
               onClick={() => setSelectedAnalysis('entities')}
             >
-              Civic Entities
+              🔍 Civic Entities
             </button>
             <button
               className={`tab-button ${selectedAnalysis === 'consensus' ? 'active' : ''}`}
               onClick={() => setSelectedAnalysis('consensus')}
             >
-              Consensus & Dialogue
+              🤝 Consensus & Dialogue
             </button>
           </div>
 
           <div className="tab-content">
+            {selectedAnalysis === 'visualizations' && (
+              <div className="visualizations-view">
+                <div className="visualizations-grid">
+                  <div className="visualization-card">
+                    <h3>📍 Response Clusters</h3>
+                    <p>Interactive map showing how responses cluster by similarity</p>
+                    <ResponseClusterMap eventId={eventId} />
+                  </div>
+                  
+                  <div className="visualization-card">
+                    <h3>📈 Sentiment Timeline</h3>
+                    <p>Track sentiment trends throughout the dialogue</p>
+                    <SentimentTimeline eventId={eventId} />
+                  </div>
+                  
+                  <div className="visualization-card">
+                    <h3>☁️ Word Cloud</h3>
+                    <p>Most frequently mentioned terms and concepts</p>
+                    <WordCloud eventId={eventId} />
+                  </div>
+                  
+                  <div className="visualization-card">
+                    <h3>📊 Consensus Graph</h3>
+                    <p>Areas of agreement and disagreement across responses</p>
+                    <ConsensusGraph eventId={eventId} />
+                  </div>
+                  
+                  <div className="visualization-card">
+                    <h3>🎯 Opinion Map (Polis-Style)</h3>
+                    <p>Advanced opinion clustering and position mapping</p>
+                    <OpinionClusterMap eventId={eventId} roundNumber={1} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {selectedAnalysis === 'clustering' && (
               <div className="clustering-view">
                 <div className="visualization-section">

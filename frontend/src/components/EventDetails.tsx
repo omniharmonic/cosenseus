@@ -304,7 +304,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     <div className="event-details-container">
       {/* Header */}
       <div className="event-details-header">
-        <button className="back-button" onClick={onBack}>
+        <button className="btn btn-secondary back-button" onClick={onBack}>
           &larr; Back to Dashboard
         </button>
         <div className="header-content">

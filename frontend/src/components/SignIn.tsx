@@ -57,7 +57,7 @@ const SignIn: React.FC<SignInProps> = ({ onCreateSession, onLogin, onBack }) => 
   return (
     <div className="sign-in-backdrop" onClick={handleBackdropClick}>
       <div className="sign-in-box">
-        <button onClick={onBack} className="close-button" aria-label="Close">
+        <button onClick={onBack} className="btn btn-secondary btn-sm close-button" aria-label="Close">
           &times;
         </button>
         <div className="cosenseus-logo">
