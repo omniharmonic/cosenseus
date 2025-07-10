@@ -220,27 +220,41 @@ async def list_events(
 
 @router.get("/{event_id}/round-state", response_model=RoundStateResponse)
 async def get_event_round_state(event_id: str, db: Session = Depends(get_local_db)):
-    """Get the current round state for an event."""
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    current_round = db.query(EventRound).filter(
-        EventRound.event_id == event_id,
-        EventRound.round_number == event.current_round
-    ).first()
-    
-    if not current_round:
-        # If no round exists, assume round 1 is open
-        return {
-            "current_round": 1,
-            "status": EventRoundStatus.WAITING_FOR_RESPONSES.value
-        }
+    """Get the current round state for an event with improved error handling."""
+    try:
+        # Use a more robust query with explicit error handling
+        event = db.query(Event).filter(Event.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Query the current round with safer handling
+        current_round = db.query(EventRound).filter(
+            EventRound.event_id == event_id,
+            EventRound.round_number == event.current_round
+        ).first()
+        
+        if not current_round:
+            # If no round exists, assume round 1 is open
+            return RoundStateResponse(
+                current_round=1,
+                status=EventRoundStatus.WAITING_FOR_RESPONSES.value
+            )
 
-    return {
-        "current_round": event.current_round,
-        "status": current_round.status.value
-    }
+        return RoundStateResponse(
+            current_round=event.current_round,
+            status=current_round.status.value
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        print(f"Database error in round-state endpoint: {e}")
+        # Return a safe fallback response instead of crashing
+        return RoundStateResponse(
+            current_round=1,
+            status=EventRoundStatus.WAITING_FOR_RESPONSES.value
+        )
 
 
 @router.post("/{event_id}/publish", response_model=EventResponse)

@@ -51,7 +51,8 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [eventDetails, setEventDetails] = useState<any>(null);
   const [feedback, setFeedback] = useState<string>('');
-  const [pollInterval, setPollInterval] = useState<any>(null);
+  const [pollInterval, setPollInterval] = useState(10000); // Start with 10 seconds
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [isWaitingForNextRound, setIsWaitingForNextRound] = useState(false);
 
   // Migration logic: migrate old session code if needed
@@ -85,10 +86,26 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
         setCurrentRound(data.current_round);
         // The backend uses 'waiting_for_responses' for the active/open state.
         setRoundStatus(data.status);
+        // Reset error tracking on success
+        setConsecutiveErrors(0);
+        setPollInterval(10000); // Reset to normal interval
       }
     } catch (err) {
       console.error('[DialogueRounds fetchRoundState] Error:', err);
       setError('Failed to fetch round state.');
+      // Implement exponential backoff
+      const newErrorCount = consecutiveErrors + 1;
+      setConsecutiveErrors(newErrorCount);
+      
+      if (newErrorCount >= 3) {
+        // Stop polling after 3 consecutive errors
+        console.log('[DialogueRounds] Stopping round state polling due to consecutive errors');
+        setError('Connection issues detected. Please refresh the page.');
+        return;
+      }
+      
+      // Exponential backoff: 10s, 20s, 30s
+      setPollInterval(Math.min(10000 * newErrorCount, 30000));
     }
   };
 
@@ -115,10 +132,24 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     }
     
     fetchRoundState(); // Initial fetch
-    const interval = setInterval(fetchRoundState, 3000); // Poll every 3 seconds
     
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [eventId]);
+    let intervalId: NodeJS.Timeout;
+    const startPolling = () => {
+      intervalId = setInterval(() => {
+        if (consecutiveErrors < 3) {
+          fetchRoundState();
+        }
+      }, pollInterval);
+    };
+    
+    startPolling();
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [eventId, pollInterval, consecutiveErrors]);
 
 
   const fetchEventData = async () => {

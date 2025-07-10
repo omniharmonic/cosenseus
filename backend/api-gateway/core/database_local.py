@@ -5,6 +5,7 @@ from pathlib import Path
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import text
+from sqlalchemy.pool import StaticPool
 
 # Import the single, shared Base and all models that need to be created
 from shared.models.database import (
@@ -23,8 +24,14 @@ LOCAL_DB_PATH.parent.mkdir(exist_ok=True)
 # Create SQLAlchemy engine for local development
 local_engine = create_engine(
     LOCAL_DB_URL,
-    connect_args={"check_same_thread": False},  # Required for SQLite
-    echo=False  # Set to True for SQL query logging
+    connect_args={
+        "check_same_thread": False,  # Required for SQLite
+        "timeout": 30,  # 30 second timeout for database operations
+    },
+    echo=False,  # Set to True for SQL query logging
+    poolclass=StaticPool,  # Use StaticPool for SQLite single connection
+    pool_pre_ping=True,  # Verify connections before use
+    pool_recycle=-1,  # Disable connection recycling for SQLite
 )
 
 # Create SessionLocal class for local development
@@ -32,16 +39,25 @@ LocalSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=local_e
 
 def get_local_db() -> Generator[Session, None, None]:
     """
-    Dependency to get local database session.
+    Dependency to get local database session with improved error handling.
     
     Yields:
         Session: SQLAlchemy database session
     """
     db = LocalSessionLocal()
     try:
+        # Test the connection before yielding
+        db.execute(text("SELECT 1"))
         yield db
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        db.rollback()
+        raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as e:
+            print(f"Error closing database connection: {e}")
 
 def init_local_db() -> None:
     """
