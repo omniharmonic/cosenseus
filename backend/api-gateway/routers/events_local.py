@@ -12,6 +12,8 @@ from core.database_local import get_local_db
 from shared.models.database import Event, Inquiry, TemporaryUser, EventParticipant, EventStatus, EventRound, EventRoundStatus, Synthesis, Response
 from .auth import get_current_user
 from pydantic import BaseModel, Field, field_validator
+# Import the ollama_client
+from nlp_service.ollama_client import ollama_client
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -295,81 +297,87 @@ async def advance_to_next_round(
     db: Session = Depends(get_local_db),
     current_user: TemporaryUser = Depends(get_current_user)
 ):
-    """Admin-only endpoint to end the current round and start the next."""
+    """
+    Advance an event to the next round, triggering analysis of the current round.
+    This is a background task.
+    """
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to advance this event")
 
-    if event.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the event organizer can advance rounds.")
-
-    current_round_db = db.query(EventRound).filter_by(event_id=event_id, round_number=event.current_round).first()
-    if not current_round_db:
-        raise HTTPException(status_code=404, detail=f"Round {event.current_round} not found.")
-
-    if current_round_db.status != EventRoundStatus.WAITING_FOR_RESPONSES:
-        raise HTTPException(status_code=400, detail=f"Round {event.current_round} is not open for responses.")
-
-    # Update status to in_analysis
-    current_round_db.status = EventRoundStatus.IN_ANALYSIS
-    db.commit()
-
-    # Define the background task for AI analysis
+    # Define the background task
     def run_analysis_and_advance():
-        try:
-            # Re-fetch objects in the background task's session if needed
-            db_bg = next(get_local_db())
-            event_bg = db_bg.query(Event).filter(Event.id == event_id).first()
-            current_round_bg = db_bg.query(EventRound).filter_by(event_id=event_id, round_number=event_bg.current_round).first()
+        with Session(db.get_bind()) as session:
+            # Re-fetch event inside the new session
+            event_in_task = session.query(Event).filter(Event.id == event_id).first()
+            if not event_in_task:
+                print(f"Event {event_id} not found in background task.")
+                return
 
-            # 1. Perform AI Analysis and create a Synthesis object
-            # This is a placeholder for your actual analysis logic
-            # You would call your NLP service here
-            responses_for_round = db_bg.query(Response).join(Inquiry).filter(
+            current_round_number = event_in_task.current_round
+            
+            # 1. Fetch all responses for the current round
+            responses = session.query(Response).join(Inquiry).filter(
                 Inquiry.event_id == event_id,
-                Inquiry.round_number == event_bg.current_round
+                Inquiry.round_number == current_round_number
             ).all()
-
-            response_texts = [r.content for r in responses_for_round]
             
-            # Simple synthesis for now
-            synthesis_content = f"Synthesis for round {event_bg.current_round}. Total responses: {len(response_texts)}. "
+            response_texts = [r.content for r in responses]
+
+            # 2. Generate a synthesis of the responses
+            synthesis_summary = "No summary available."
             if response_texts:
-                synthesis_content += "Key themes appear to be: " + ", ".join(list(set(response_texts))[:3])
+                synthesis_summary = ollama_client.generate_round_insights(
+                    event_data={"title": event_in_task.title},
+                    responses=[{"content": r} for r in response_texts],
+                    round_number=current_round_number
+                ).get('summary', 'Synthesis could not be generated.')
 
-
+            # 3. Save the synthesis for the completed round
             new_synthesis = Synthesis(
-                event_id=event_id,
-                round_number=event_bg.current_round,
-                content=synthesis_content
+                event_id=uuid.UUID(event_id),
+                round_number=current_round_number,
+                content=synthesis_summary
             )
-            db_bg.add(new_synthesis)
+            session.add(new_synthesis)
 
-            # 2. Update current round status to ADMIN_REVIEW
-            current_round_bg.status = EventRoundStatus.ADMIN_REVIEW
+            # 4. Generate new inquiries for the next round
+            next_round_number = current_round_number + 1
+            all_previous_inquiries = session.query(Inquiry).filter(Inquiry.event_id == event_id).all()
+            previous_inquiry_texts = [q.question_text for q in all_previous_inquiries]
             
-            # 3. Create the next round
+            new_inquiries_data = ollama_client.generate_next_inquiries(synthesis_summary, previous_inquiry_texts)
+            
+            for index, inquiry_data in enumerate(new_inquiries_data):
+                new_inquiry = Inquiry(
+                    event_id=uuid.UUID(event_id),
+                    question_text=inquiry_data.get('title', 'Untitled Inquiry'),
+                    description=inquiry_data.get('content', ''),
+                    response_type='open_ended',
+                    order_index=index,
+                    round_number=next_round_number
+                )
+                session.add(new_inquiry)
+
+            # 5. Advance the event to the next round
+            event_in_task.current_round = next_round_number
+            
+            # 6. Create a new round entry in the database
             new_round = EventRound(
-                event_id=event_id,
-                round_number=event_bg.current_round + 1,
+                event_id=uuid.UUID(event_id),
+                round_number=next_round_number,
                 status=EventRoundStatus.WAITING_FOR_RESPONSES
             )
-            db_bg.add(new_round)
-            
-            # 4. Update the event's current_round counter
-            event_bg.current_round += 1
-            
-            db_bg.commit()
-        except Exception as e:
-            # Log error, potentially update round status to an error state
-            print(f"Error during background analysis for event {event_id}, round {event_bg.current_round}: {e}")
-            db_bg.rollback()
-        finally:
-            db_bg.close()
+            session.add(new_round)
+
+            session.commit()
+            print(f"Event {event_id} advanced to round {next_round_number} with {len(new_inquiries_data)} new inquiries.")
 
     background_tasks.add_task(run_analysis_and_advance)
-
-    return {"message": f"Round {event.current_round} analysis started. The next round will be available after admin review."}
+    
+    return {"message": f"Analysis of round {event.current_round} started. The event will advance to the next round shortly."}
 
 
 @router.post("/", response_model=EventResponse, status_code=201)

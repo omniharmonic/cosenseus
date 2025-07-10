@@ -317,10 +317,69 @@ Please analyze these responses for round {round_number} and provide insights tha
                 "participant_sentiment": "neutral",
                 "summary": f"Error generating insights: {e}"
             }
-    
+
+    def generate_next_inquiries(self, synthesis_summary: str, previous_inquiries: List[str]) -> List[Dict[str, str]]:
+        """
+        Generate next round of inquiries based on the synthesis of the previous round.
+        
+        Args:
+            synthesis_summary: The summary of the previous round's discussion.
+            previous_inquiries: A list of questions from all previous rounds to avoid repetition.
+            
+        Returns:
+            A list of new inquiry dictionaries, each with 'title' and 'content'.
+        """
+        system_prompt = """You are an expert facilitator for civic dialogues. Based on the summary of the last round, generate 3-5 new, concise, open-ended questions for the next round. These questions should:
+1.  Build upon the key themes and disagreements from the previous round.
+2.  Encourage deeper reflection and constructive dialogue.
+3.  Avoid repeating previous questions.
+4.  Be neutral and unbiased.
+Return a JSON response with a single key "inquiries" which is a list of objects, where each object has a "title" (the question) and a "content" (a brief, one-sentence description of the question's purpose).
+
+Example format:
+{
+  "inquiries": [
+    {
+      "title": "What specific trade-offs are you willing to make to address the housing crisis?",
+      "content": "This question asks participants to consider concrete compromises."
+    },
+    {
+      "title": "How might the concerns of the 'pro-development' group be addressed while respecting the 'neighborhood character' group's values?",
+      "content": "This question encourages participants to find common ground between opposing views."
+    }
+  ]
+}"""
+        
+        previous_inquiries_text = "\\n".join(f"- {q}" for q in previous_inquiries)
+        prompt = f"""Previous Round Synthesis:
+{synthesis_summary}
+
+Previously Asked Questions (Do not repeat these):
+{previous_inquiries_text}
+
+Generate the next set of inquiries."""
+        
+        try:
+            response_str = self.generate_response(prompt, system_prompt)
+            if "{" in response_str and "}" in response_str:
+                start = response_str.find("{")
+                end = response_str.rfind("}") + 1
+                json_str = response_str[start:end]
+                parsed_response = json.loads(json_str)
+                # Basic validation
+                if "inquiries" in parsed_response and isinstance(parsed_response["inquiries"], list):
+                    return parsed_response["inquiries"]
+            
+            logger.warning("Failed to parse inquiries from LLM response, returning default.")
+            return [{"title": "What are your reflections on the previous round's summary?", "content": "A general question to continue the dialogue."}]
+
+        except Exception as e:
+            logger.error(f"Failed to generate next inquiries: {e}")
+            return [{"title": "What are your reflections on the previous round's summary?", "content": "A general question to continue the dialogue."}]
+
     def check_health(self) -> Dict[str, Any]:
         """
-        Check if Ollama is running and accessible.
+        Check the health of the Ollama service.
         
         Returns:
             Health status
