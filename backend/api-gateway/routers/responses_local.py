@@ -9,8 +9,9 @@ from datetime import datetime, timezone
 import uuid
 
 from core.database_local import get_local_db
-from shared.models.database import Inquiry, Response, ProcessingStatus, Event
+from shared.models.database import Inquiry, Response, ProcessingStatus, Event, TemporaryUser
 from pydantic import BaseModel, Field
+from routers.auth import get_current_user
 
 router = APIRouter(prefix="/responses", tags=["responses"])
 
@@ -34,28 +35,38 @@ class ResponseResponse(BaseModel):
     class Config:
         from_attributes = True
 
-@router.post("/", response_model=ResponseResponse, status_code=201)
+@router.post("/", status_code=201)
 async def create_response(
     response_data: ResponseSubmission,
-    db: Session = Depends(get_local_db)
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
 ):
     """Create a new response to an inquiry."""
-    inquiry = db.query(Inquiry).filter(Inquiry.id == response_data.inquiry_id).first()
-    if not inquiry:
-        raise HTTPException(status_code=404, detail="Inquiry not found")
+    try:
+        inquiry = db.query(Inquiry).filter(Inquiry.id == response_data.inquiry_id).first()
+        if not inquiry:
+            raise HTTPException(status_code=404, detail="Inquiry not found")
 
-    new_response = Response(
-        event_id=inquiry.event_id,
-        inquiry_id=response_data.inquiry_id,
-        content=response_data.content,
-        is_anonymous=response_data.is_anonymous,
-        round_number=response_data.round_number,
-        processing_status=ProcessingStatus.PENDING,
-    )
-    db.add(new_response)
-    db.commit()
-    db.refresh(new_response)
-    return new_response
+        new_response = Response(
+            event_id=inquiry.event_id,
+            inquiry_id=response_data.inquiry_id,
+            user_id=current_user.id if not response_data.is_anonymous else None,
+            content=response_data.content,
+            is_anonymous=response_data.is_anonymous,
+            round_number=response_data.round_number,
+            processing_status=ProcessingStatus.PENDING,
+        )
+        
+        db.add(new_response)
+        db.commit()
+        db.refresh(new_response)
+        
+        return {"id": str(new_response.id), "status": "created", "content": response_data.content}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating response: {str(e)}")
 
 @router.get("/", response_model=List[ResponseResponse])
 async def list_responses(
@@ -107,7 +118,8 @@ async def get_event_responses(
 @router.post("/batch", status_code=201)
 async def submit_round_responses(
     responses: List[ResponseSubmission],
-    db: Session = Depends(get_local_db)
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
 ):
     """Submit multiple responses for a round."""
     submitted_responses = []
@@ -120,6 +132,7 @@ async def submit_round_responses(
         new_response = Response(
             event_id=inquiry.event_id,
             inquiry_id=response_data.inquiry_id,
+            user_id=current_user.id if not response_data.is_anonymous else None,
             content=response_data.content,
             is_anonymous=response_data.is_anonymous,
             round_number=response_data.round_number,
