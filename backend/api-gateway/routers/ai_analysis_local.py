@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import text
 from typing import List, Dict, Any, Optional
 import sys
 import os
@@ -15,8 +16,8 @@ from core.database_local import get_local_db
 # Import local database models
 from shared.models.database import Event, Inquiry, Response, EventRound, EventRoundStatus, Synthesis
 from nlp_service.ollama_client import ollama_client
-from nlp_service.core.opinion_analyzer import OpinionAnalyzer
 from .auth import get_current_user
+from nlp_service.core.opinion_analyzer import OpinionAnalyzer
 
 router = APIRouter()
 
@@ -417,8 +418,6 @@ async def analyze_event_round(
     Analyze a specific round of an event using local Ollama AI.
     """
     try:
-        from sqlalchemy import text
-        
         # Get event data using raw SQL
         event_result = db.execute(text("""
             SELECT id, title, description, event_type, status
@@ -525,7 +524,6 @@ async def sentiment_timeline(event_id: str, db: Session = Depends(get_local_db))
     Return a timeline of sentiment analysis for all responses in an event.
     """
     try:
-        from sqlalchemy import text
         # Get all responses for the event
         responses_result = db.execute(text("""
             SELECT r.id, r.content, r.created_at
@@ -566,7 +564,6 @@ async def word_cloud(event_id: str, db: Session = Depends(get_local_db), max_wor
     Return a list of keywords and their frequencies for all responses in an event, for word cloud visualization.
     """
     try:
-        from sqlalchemy import text
         # Get all responses for the event
         responses_result = db.execute(text("""
             SELECT r.content
@@ -588,7 +585,6 @@ async def consensus_graph(event_id: str, db: Session = Depends(get_local_db)):
     Return consensus clusters and summary for all responses in an event, for consensus graph visualization.
     """
     try:
-        from sqlalchemy import text
         # Get all responses for the event
         responses_result = db.execute(text("""
             SELECT r.content
@@ -645,7 +641,6 @@ async def polis_analysis_for_event_round(event_id: str, round_number: int, db: S
     Performs a Polis-style analysis on a round of responses for a specific event.
     """
     try:
-        from sqlalchemy import text
         # Get responses for this specific round
         responses_result = db.execute(text("""
             SELECT r.content
