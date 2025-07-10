@@ -20,7 +20,7 @@ interface RoundAnalysis {
   participant_count: number;
   created_at: string;
   analysis?: any;
-  next_round_prompts?: string[]; // Added for new prompts
+  next_round_prompts?: Array<{ title: string; content: string }>; // Correctly typed
 }
 
 interface DialogueRoundsProps {
@@ -37,7 +37,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   isAdmin = false
 }) => {
   const [currentRound, setCurrentRound] = useState(1);
-  const [roundStatus, setRoundStatus] = useState<'open' | 'waiting_for_analysis' | 'completed'>('open');
+  const [roundStatus, setRoundStatus] = useState<'waiting_for_responses' | 'in_analysis' | 'admin_review' | 'completed'>('waiting_for_responses');
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [roundAnalyses, setRoundAnalyses] = useState<RoundAnalysis[]>([]);
   const [responses, setResponses] = useState<{[key: string]: string}>({});
@@ -48,6 +48,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   const [eventDetails, setEventDetails] = useState<any>(null);
   const [feedback, setFeedback] = useState<string>('');
   const [pollInterval, setPollInterval] = useState<any>(null);
+  const [isWaitingForNextRound, setIsWaitingForNextRound] = useState(false);
 
   console.log(
     '[DialogueRounds Render] EventID:', eventId, 
@@ -67,9 +68,10 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
       }
       const data = await res.json();
       console.log('[DialogueRounds fetchRoundState] API Response:', data);
-      if (data.round_state) {
-        setCurrentRound(data.round_state.current_round);
-        setRoundStatus(data.round_state.status);
+      if (data && typeof data.current_round !== 'undefined') {
+        setCurrentRound(data.current_round);
+        // The backend uses 'waiting_for_responses' for the active/open state.
+        setRoundStatus(data.status);
       }
     } catch (err) {
       console.error('[DialogueRounds fetchRoundState] Error:', err);
@@ -77,14 +79,21 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     }
   };
 
-  // Poll every 2 seconds
   useEffect(() => {
-    fetchRoundState();
-    if (pollInterval) clearInterval(pollInterval);
-    const interval = setInterval(fetchRoundState, 2000);
-    setPollInterval(interval);
-    return () => clearInterval(interval);
+    // On mount, load from localStorage and then start polling
+    const saved = localStorage.getItem(`census_dialogue_${eventId}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setCurrentRound(parsed.currentRound || 1);
+      setResponses(parsed.responses || {});
+    }
+    
+    fetchRoundState(); // Initial fetch
+    const interval = setInterval(fetchRoundState, 3000); // Poll every 3 seconds
+    
+    return () => clearInterval(interval); // Cleanup on unmount
   }, [eventId]);
+
 
   const fetchEventData = async () => {
     if (!eventId) return;
@@ -101,13 +110,21 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
       setEventDetails(eventResponse.data);
 
       // Fetch inquiries for the event
-      const inquiriesResponse = await apiService.getEventInquiries(eventId);
+      const inquiriesResponse = await apiService.getEventInquiries(eventId, currentRound);
       console.log('[DialogueRounds fetchEventData] getEventInquiries response:', inquiriesResponse);
       if (inquiriesResponse.error) {
         setError(inquiriesResponse.error);
+        setIsWaitingForNextRound(false);
         return;
       }
-      setInquiries(inquiriesResponse.data || []);
+      
+      if (currentRound > 1 && (!inquiriesResponse.data || inquiriesResponse.data.length === 0)) {
+        setIsWaitingForNextRound(true);
+        setInquiries([]);
+      } else {
+        setIsWaitingForNextRound(false);
+        setInquiries(inquiriesResponse.data || []);
+      }
 
       if (currentRound > 1) {
         const roundResultsResponse = await apiService.getEventRoundResults(eventId, currentRound - 1);
@@ -236,32 +253,26 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
 
   useEffect(() => {
     fetchEventData();
-  }, [eventId]);
+  }, [eventId, currentRound]);
 
   // --- UX POLISH & JOURNEY REFACTOR START ---
   // 1. Persist round and responses in localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`census_dialogue_${eventId}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setCurrentRound(parsed.currentRound || 1);
-      setResponses(parsed.responses || {});
-    }
-  }, [eventId]);
-  useEffect(() => {
-    localStorage.setItem(
-      `census_dialogue_${eventId}`,
-      JSON.stringify({ currentRound, responses })
-    );
-  }, [eventId, currentRound, responses]);
+    const dataToSave = JSON.stringify({
+      currentRound,
+      responses
+    });
+    localStorage.setItem(`census_dialogue_${eventId}`, dataToSave);
+  }, [currentRound, responses, eventId]);
+
   // 2. Add banners/instructions for each step
   const getBanner = () => {
-    if (roundStatus === 'open') {
+    if (roundStatus === 'waiting_for_responses') {
       return currentRound === 1
         ? 'Welcome! Please share your initial thoughts on these questions.'
         : 'Reflect on the group’s key themes and respond to the new prompts.';
     }
-    if (roundStatus === 'waiting_for_analysis') {
+    if (roundStatus === 'in_analysis') {
       return 'Thank you! Your responses are in. Waiting for AI analysis and admin action...';
     }
     if (roundStatus === 'completed') {
@@ -287,7 +298,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   );
   // 5. Auto-transition from waiting to open/completed
   useEffect(() => {
-    if (roundStatus === 'waiting_for_analysis') {
+    if (roundStatus === 'in_analysis') {
       const interval = setInterval(fetchRoundState, 2000);
       return () => clearInterval(interval);
     }
@@ -305,13 +316,20 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     });
   };
 
-  if (loading) {
+  if (loading && inquiries.length === 0) {
     return (
       <div className="dialogue-rounds-container">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading dialogue session...</p>
-        </div>
+        <div className="loading-spinner"></div>
+        <p>Loading dialogue...</p>
+      </div>
+    );
+  }
+
+  if (isWaitingForNextRound) {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="loading-spinner"></div>
+        <p>The next round is being prepared. Please wait...</p>
       </div>
     );
   }
@@ -330,8 +348,18 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     );
   }
 
+  if (roundStatus === 'admin_review') {
+    return (
+      <div className="waiting-for-analysis">
+          <h3>Round {currentRound} is complete.</h3>
+          <p>The moderator is reviewing the results. The next round will begin shortly.</p>
+          <div className="loading-spinner"></div>
+      </div>
+    );
+  }
+
   // Participant view: show questions if round is open
-  if (roundStatus === 'open') {
+  if (roundStatus === 'waiting_for_responses') {
     return (
       <div className="dialogue-rounds-container">
         <div className="rounds-header">
@@ -384,8 +412,10 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
                 <div className="next-round-prompts">
                   <h3>🗣️ Focus Areas for This Round</h3>
                   <ul>
-                    {currentAnalysis.next_round_prompts.map((prompt: string, idx: number) => (
-                      <li key={idx} className="dialogue-prompt">{prompt}</li>
+                    {currentAnalysis.next_round_prompts.map((prompt, idx) => (
+                      <li key={idx} className="dialogue-prompt">
+                        <strong>{prompt.title}:</strong> {prompt.content}
+                      </li>
                     ))}
                   </ul>
                   <p className="prompt-instructions">Please consider these focus areas as you respond to help move the discussion toward consensus.</p>
@@ -452,7 +482,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   }
 
   // Waiting for analysis/admin
-  if (roundStatus === 'waiting_for_analysis') {
+  if (roundStatus === 'in_analysis') {
     return (
       <div className="dialogue-rounds-container">
         <div className="rounds-header">
