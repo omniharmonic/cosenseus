@@ -62,40 +62,13 @@ def get_inquiry_by_id(db: Session, inquiry_id: str):
 def create_initial_local_data(db: Session):
     """
     Create initial data for local development using ORM.
+    This is kept empty to allow the "first user is admin" logic to work correctly.
+    Sample data can be created through the UI.
     """
-    # Create a default admin user
-    admin_user = TemporaryUser(
-        display_name="local_admin",
-        session_code=str(uuid.uuid4())
-    )
-    db.add(admin_user)
-    db.flush() # Flush to get the admin_user.id
-    
-    # Create a sample event
-    sample_event = Event(
-        title="Local Community Planning Discussion",
-        description="A sample local event for testing the platform",
-        status="active",
-        is_public=True,
-        organizer_id=admin_user.id
-    )
-    db.add(sample_event)
-    db.flush() # Flush to get sample_event.id
+    # This function is intentionally left empty.
+    # The first user to sign up via the UI will be an admin.
+    pass
 
-    # Create sample inquiries
-    inquiries = [
-        {"question": "What are the most important priorities for our community?", "order_index": 1},
-        {"question": "How can we improve transportation in our area?", "order_index": 2},
-        {"question": "What environmental concerns concern you most?", "order_index": 3}
-    ]
-    
-    for inquiry_data in inquiries:
-        inquiry = Inquiry(
-            event_id=sample_event.id,
-            question_text=inquiry_data["question"],
-            order_index=inquiry_data["order_index"]
-        )
-        db.add(inquiry)
 
 def reset_local_db():
     """
