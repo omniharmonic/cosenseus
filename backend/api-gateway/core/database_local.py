@@ -45,15 +45,13 @@ def get_local_db() -> Generator[Session, None, None]:
 
 def init_local_db() -> None:
     """
-    Initialize local database tables and seed with initial data if the DB file doesn't exist.
-    This is the standard, stable pattern for local development.
+    Initialize local database tables and seed with initial data.
+    For local development, we will reset the database on every startup
+    to ensure the schema is always in sync with the models.
     """
-    print("Initializing local database...")
-    if not LOCAL_DB_PATH.exists():
-        print("Database file not found. Creating and seeding a new one.")
-        init_local_db_internal()
-    else:
-        print("✅ Database already exists. Skipping creation and seeding.")
+    print("Initializing local database (with reset)...")
+    reset_local_db()
+
 
 def get_inquiry_by_id(db: Session, inquiry_id: str):
     """
