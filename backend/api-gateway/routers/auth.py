@@ -28,6 +28,7 @@ class TemporaryUserResponse(BaseModel):
     id: uuid.UUID
     display_name: str
     session_code: str
+    role: str  # Include role in the response
     created_at: datetime
 
     class Config:
@@ -67,7 +68,8 @@ def get_current_user(session_code: str = Header(..., alias="X-Session-Code")):
 @router.post("/session/create", response_model=TemporaryUserResponse, status_code=status.HTTP_201_CREATED)
 def create_session(request: CreateSessionRequest):
     """
-    Creates a new temporary user. Manually manages the DB session for guaranteed commit.
+    Creates a new temporary user. The first user created is an admin.
+    Manually manages the DB session for guaranteed commit.
     """
     db = LocalSessionLocal()
     try:
@@ -76,13 +78,20 @@ def create_session(request: CreateSessionRequest):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Display name cannot be empty."
             )
+
+        # Check if this is the first user
+        is_first_user = db.query(TemporaryUser).first() is None
+        user_role = 'admin' if is_first_user else 'user'
         
-        new_user = TemporaryUser(display_name=request.display_name)
+        new_user = TemporaryUser(
+            display_name=request.display_name,
+            role=user_role
+        )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
         
-        print(f"✨ New session created. User: {new_user.display_name}, Session Code: {new_user.session_code}")
+        print(f"✨ New session created. User: {new_user.display_name}, Role: {new_user.role}, Session Code: {new_user.session_code}")
         
         # --- DIAGNOSTIC STEP ---
         # Immediately try to read the user back from the DB to verify the commit.

@@ -18,6 +18,7 @@ interface User {
   id: string;
   display_name: string;
   session_code: string;
+  role: 'admin' | 'user'; // Add role to user interface
   created_at: string;
 }
 
@@ -226,7 +227,7 @@ const EventDetailsRoute: React.FC = () => {
       <div className="dashboard-container">
         <EventDetails
           eventId={eventId}
-          userRole={user ? 'user' : 'anonymous'}
+          userRole={user ? user.role : 'anonymous'}
           onBack={() => navigate('/events')}
           onParticipate={() => navigate(`/participate/${eventId}`)}
           onStartDialogue={() => navigate(`/dialogue/${eventId}`)}
