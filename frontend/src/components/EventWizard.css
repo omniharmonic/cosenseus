@@ -1,30 +1,31 @@
 .event-wizard {
   max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin: var(--spacing-unit-5) auto;
+  padding: var(--spacing-unit-5);
+  background: var(--card-background-color-dark);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-large);
+  border: 1px solid var(--border-color-dark);
 }
 
 .wizard-header {
   text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: var(--spacing-unit-5);
+  padding-bottom: var(--spacing-unit-4);
+  border-bottom: 1px solid var(--border-color-dark);
 }
 
 .wizard-header h2 {
-  margin: 0 0 1.5rem 0;
-  color: #2c3e50;
-  font-size: 2rem;
-  font-weight: 600;
+  margin: 0 0 calc(var(--spacing-unit) * 2) 0;
+  color: var(--text-color-primary-dark);
+  font-size: 2.2rem;
+  font-weight: 700;
 }
 
 .step-indicator {
   display: flex;
   justify-content: center;
-  gap: 2rem;
+  gap: var(--spacing-unit-6);
   align-items: center;
 }
 
@@ -35,350 +36,244 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e9ecef;
-  color: #6c757d;
+  background: var(--background-color-dark);
+  color: var(--text-color-secondary-dark);
   font-weight: 600;
   font-size: 1.1rem;
   transition: all 0.3s ease;
   position: relative;
+  border: 2px solid var(--border-color-dark);
 }
 
 .step.active {
-  background: #3498db;
+  background: var(--primary-color);
   color: white;
-  transform: scale(1.1);
+  transform: scale(1.05);
+  border-color: var(--primary-color-light);
+  box-shadow: 0 0 15px rgba(var(--primary-color-rgb), 0.4);
+}
+
+.step.completed {
+    background: var(--primary-color-dark);
+    color: var(--text-color-primary-dark);
+    border-color: var(--primary-color-dark);
 }
 
 .step:not(:last-child)::after {
   content: '';
   position: absolute;
-  right: -2rem;
-  width: 2rem;
+  left: calc(100% + 8px);
+  width: calc(var(--spacing-unit-6) - 16px);
   height: 2px;
-  background: #e9ecef;
+  background: var(--border-color-dark);
   top: 50%;
   transform: translateY(-50%);
 }
 
-.step.active:not(:last-child)::after {
-  background: #3498db;
+.step.completed:not(:last-child)::after {
+  background: var(--primary-color-dark);
 }
 
+
 .wizard-content {
-  min-height: 500px;
-  padding: 2rem 0;
+  min-height: 400px;
+  padding: var(--spacing-unit-3) 0;
 }
 
 .step-content h3 {
-  color: #2c3e50;
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
+  color: var(--text-color-primary-dark);
+  font-size: 1.6rem;
+  margin-bottom: var(--spacing-unit-3);
   font-weight: 600;
 }
 
 .step-content p {
-  color: #555;
-  margin-bottom: 1.5rem;
+  color: var(--text-color-secondary-dark);
+  margin-bottom: var(--spacing-unit-4);
   line-height: 1.6;
 }
 
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e9ecef;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-  background: #ffffff;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-}
-
-.form-group input.error,
-.form-group textarea.error,
-.form-group select.error {
-  border-color: #e74c3c;
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 100px;
-}
+/* 
+  .form-group and input styles are now inherited from index.css.
+  The specific overrides in this file have been removed to ensure consistency.
+*/
 
 .form-group small {
   display: block;
-  margin-top: 0.25rem;
-  color: #6c757d;
-  font-size: 0.85rem;
+  margin-top: var(--spacing-unit);
+  color: var(--text-color-secondary-dark);
+  font-size: 0.9rem;
 }
 
 .error-text {
-  color: #e74c3c;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
+  color: var(--error-color-dark);
+  font-size: 0.9rem;
+  margin-top: var(--spacing-unit);
   display: block;
 }
 
 .checkbox-group {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: var(--spacing-unit);
+  background-color: var(--background-color-dark);
+  padding: var(--spacing-unit-2);
+  border-radius: var(--border-radius-medium);
 }
 
 .checkbox-group label {
   display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--spacing-unit);
   margin-bottom: 0;
   cursor: pointer;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .checkbox-group input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-  transform: scale(1.1);
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-color);
 }
 
 .checkbox-group span {
-  color: #2c3e50;
+  color: var(--text-color-primary-dark);
   font-weight: 500;
 }
 
 .form-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-unit-4);
   align-items: end;
 }
 
 .inquiry-item {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  background: var(--background-color-dark);
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-medium);
+  padding: var(--spacing-unit-2) var(--spacing-unit-3);
+  margin-bottom: var(--spacing-unit-2);
   transition: border-color 0.3s ease;
 }
 
 .inquiry-item:hover {
-  border-color: #3498db;
+  border-color: var(--primary-color-light);
 }
 
 .inquiry-header {
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #dee2e6;
+  margin-bottom: var(--spacing-unit-3);
+  padding-bottom: var(--spacing-unit-2);
+  border-bottom: 1px solid var(--border-color-dark);
 }
 
 .inquiry-header h4 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text-color-primary-dark);
   font-size: 1.1rem;
   font-weight: 600;
 }
 
 .inquiry-controls {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--spacing-unit-2);
 }
 
-.move-btn, .remove-btn {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #dee2e6;
-  background: #ffffff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
-}
-
-.move-btn:hover:not(:disabled) {
-  background: #3498db;
-  color: white;
-  border-color: #3498db;
-}
-
-.move-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.remove-btn {
-  color: #e74c3c;
-  border-color: #e74c3c;
-}
-
-.remove-btn:hover {
-  background: #e74c3c;
-  color: white;
-}
+/* 
+  Inquiry control buttons now use global .btn classes.
+  Example: <button className="btn btn-secondary btn-sm">...</button>
+  A .btn-sm modifier class could be added to index.css for smaller buttons.
+*/
 
 .add-inquiry-btn {
+  /* This now uses the .btn and .btn-secondary classes */
   width: 100%;
-  padding: 1rem;
-  background: #ffffff;
-  border: 2px dashed #3498db;
-  border-radius: 8px;
-  color: #3498db;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.add-inquiry-btn:hover {
-  background: #3498db;
-  color: white;
-  border-style: solid;
+  border-style: dashed;
+  border-width: 2px;
+  margin-top: var(--spacing-unit-2);
 }
 
 .wizard-footer {
-  padding-top: 2rem;
-  border-top: 2px solid #f0f0f0;
-  margin-top: 2rem;
+  margin-top: var(--spacing-unit-5);
+  padding-top: var(--spacing-unit-4);
+  border-top: 1px solid var(--border-color-dark);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .button-group {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-unit-2);
 }
 
-.btn-primary, .btn-secondary {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 120px;
-}
+/* 
+  Wizard footer buttons now use global .btn classes.
+  Example: 
+  <button className="btn btn-secondary">Back</button>
+  <button className="btn btn-primary">Next</button>
+*/
 
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2980b9;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-}
-
-.btn-primary:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-secondary {
-  background: #ffffff;
-  color: #6c757d;
-  border: 2px solid #dee2e6;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #adb5bd;
-  color: #495057;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
   .event-wizard {
-    margin: 1rem;
-    padding: 1rem;
+    margin: var(--spacing-unit-3) auto;
+    padding: var(--spacing-unit-3);
   }
-  
+
   .wizard-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
   }
-  
+
   .step-indicator {
-    gap: 1rem;
+    gap: calc(var(--spacing-unit) * 2);
   }
-  
+
   .step {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
-  
+
   .step:not(:last-child)::after {
-    right: -1rem;
-    width: 1rem;
+    width: calc(var(--spacing-unit-5) - 14px);
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
   }
   
   .inquiry-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: var(--spacing-unit-2);
   }
-  
+
   .button-group {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--spacing-unit-2);
   }
-  
-  .btn-primary, .btn-secondary {
+
+  .button-group > button {
     width: 100%;
-    min-width: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .event-wizard {
-    margin: 0.5rem;
-    padding: 0.75rem;
+  .wizard-header {
+    margin-bottom: var(--spacing-unit-3);
   }
-  
   .wizard-content {
-    min-height: 400px;
-    padding: 1rem 0;
+    min-height: auto;
+    padding: var(--spacing-unit) 0;
   }
-  
+
   .step-content h3 {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
   }
-  
   .inquiry-item {
-    padding: 1rem;
+      padding: var(--spacing-unit-2);
   }
 } 

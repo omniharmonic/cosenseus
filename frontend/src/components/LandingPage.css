@@ -1,187 +1,97 @@
 /* Landing Page Styles */
 .landing-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Allows the page to take up available space */
+  background-color: var(--background-color-dark);
+}
+
+.landing-page-header {
+  display: flex;
+  justify-content: flex-end; /* Pushes nav items to the right */
+  align-items: center;
+  padding: var(--spacing-unit-3) var(--spacing-unit-4);
+  width: 100%;
+}
+
+.landing-page-header nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit-2);
 }
 
 .hero-section {
-  padding: 80px 20px 60px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.hero-logo {
-  margin-bottom: 20px;
+  flex-grow: 1;
   display: flex;
+  flex-direction: column; /* Stack content vertically */
+  align-items: center;
   justify-content: center;
+  text-align: center;
+  padding: var(--spacing-unit-4);
 }
 
-.hero-section h1 {
-  font-size: 4rem;
+.hero-content {
+  max-width: 800px; /* Increased max-width */
+  margin-bottom: var(--spacing-unit-6); /* Add space before the logo */
+}
+
+.landing-page .hero-content .gradient-text {
+  font-size: 4rem; /* Slightly reduced size for balance */
   font-weight: 700;
-  margin-bottom: 20px;
-  background: linear-gradient(45deg, #40e0d0, #48cae4, #0077b6);
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  background: linear-gradient(45deg, var(--primary-color-dark), var(--primary-color-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: 0 0 30px rgba(64, 224, 208, 0.5);
+  text-fill-color: transparent;
+  margin-bottom: var(--spacing-unit-3); /* Adjusted margin */
 }
 
-.tagline {
-  font-size: 1.5rem;
-  margin-bottom: 40px;
-  opacity: 0.9;
-  font-weight: 300;
-}
-
-.hero-cta {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.cta-button {
-  background: #4CAF50;
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  font-size: 1.1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-}
-
-.cta-button:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.cta-button-secondary {
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-  padding: 13px 28px;
-  font-size: 1.1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-}
-
-.cta-button-secondary:hover {
-  background: white;
-  color: #667eea;
-  transform: translateY(-2px);
-}
-
-.how-it-works {
-  padding: 60px 20px;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
-}
-
-.how-it-works h2 {
-  font-size: 2.5rem;
-  margin-bottom: 40px;
-  font-weight: 600;
-}
-
-.steps-list {
-  max-width: 800px;
-  margin: 0 auto;
-  text-align: left;
-  list-style: none;
-  padding: 0;
-}
-
-.steps-list li {
-  background: rgba(255,255,255,0.1);
-  margin: 20px 0;
-  padding: 25px;
-  border-radius: 12px;
-  border-left: 4px solid #4CAF50;
-  font-size: 1.1rem;
+.landing-page .hero-content p {
+  font-size: 1.25rem; /* Adjusted size */
+  color: var(--text-color-secondary-dark);
+  max-width: 600px;
+  margin: 0 auto calc(var(--spacing-unit) * 4) auto;
   line-height: 1.6;
 }
 
-.steps-list li strong {
-  color: #4CAF50;
-  font-weight: 600;
-}
-
-.discover-events {
-  padding: 60px 20px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.discover-events h2 {
-  font-size: 2.5rem;
-  margin-bottom: 20px;
-  font-weight: 600;
-}
-
-.discover-events p {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
-  opacity: 0.9;
-}
-
-.app-footer {
-  background: rgba(0,0,0,0.2);
-  padding: 30px 20px;
-  margin-top: 60px;
-}
-
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
+.cta-buttons {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
+  justify-content: center;
+  gap: var(--spacing-unit-3);
 }
 
-.footer-links a {
-  color: white;
-  text-decoration: none;
-  margin: 0 10px;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-}
+/* 
+  .btn-primary and .btn-secondary are now globally defined in index.css.
+  The specific overrides in this file have been removed to ensure consistency.
+  The buttons in LandingPage.tsx should now have `className="btn btn-primary"` etc.
+*/
 
-.footer-links a:hover {
-  opacity: 1;
+.hero-logo {
+  margin-top: auto; /* Pushes the logo towards the bottom if space allows */
+  padding-top: var(--spacing-unit-6);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .hero-section h1 {
+  .landing-page .hero-content .gradient-text {
     font-size: 3rem;
   }
   
-  .tagline {
-    font-size: 1.2rem;
+  .landing-page .hero-content p {
+    font-size: 1.1rem;
   }
   
-  .hero-cta {
+  .cta-buttons {
     flex-direction: column;
     align-items: center;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
   }
-  
-  .steps-list li {
-    font-size: 1rem;
-    padding: 20px;
-  }
-  
-  .footer-content {
-    flex-direction: column;
-    text-align: center;
+
+  .cta-buttons .btn {
+    width: 100%;
   }
 } 

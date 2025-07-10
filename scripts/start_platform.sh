@@ -96,23 +96,23 @@ trap cleanup SIGINT SIGTERM
 ensure_port_free() {
   PORT=$1
   
-  # Use lsof to find processes on the port
-  PIDS=$(lsof -ti tcp:$PORT)
+  # Use lsof to find processes on the port. Append '|| true' to prevent exit on no results.
+  PIDS=$(lsof -ti tcp:$PORT || true)
   if [ ! -z "$PIDS" ]; then
     print_warning "Port $PORT is in use by PID(s): $PIDS. Killing..."
     kill -9 $PIDS >/dev/null 2>&1
     
     # Wait for port to be released
     for i in {1..5}; do
-        if ! lsof -ti tcp:$PORT >/dev/null 2>&1; then
+        if ! (lsof -ti tcp:$PORT >/dev/null 2>&1); then
             break
         fi
         sleep 0.5
     done
   fi
 
-  # Final check
-  if lsof -ti tcp:$PORT >/dev/null 2>&1; then
+  # Final check. Use a subshell to prevent exit.
+  if (lsof -ti tcp:$PORT >/dev/null 2>&1); then
     print_error "Failed to free port $PORT. It is still in use."
     exit 1
   else

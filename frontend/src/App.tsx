@@ -8,6 +8,8 @@ import LandingPage from './components/LandingPage';
 import SignIn from './components/SignIn';
 import Logo from './components/Logo';
 import EventWizard from './components/EventWizard';
+import TemplateManager from './components/TemplateManager';
+import AdvancedAI from './components/AdvancedAI';
 import './App.css';
 import { apiService } from './services/api';
 
@@ -181,6 +183,10 @@ const EventsRoute: React.FC = () => {
     navigate('/events/new');
   };
 
+  const handleManageTemplates = () => {
+    navigate('/templates');
+  };
+
   return (
     <>
       <Navigation />
@@ -189,6 +195,7 @@ const EventsRoute: React.FC = () => {
           <UnifiedDashboard 
             onEventSelect={handleEventSelect} 
             onCreateEvent={handleCreateEvent}
+            onManageTemplates={handleManageTemplates}
           />
         ) : (
           <div>Please sign in to see events.</div>
@@ -284,19 +291,7 @@ const ResultsRoute: React.FC = () => {
     <>
       <Navigation />
       <div className="dashboard-container">
-        <div className="results-view">
-          <div className="results-header">
-            <button className="back-button" onClick={() => navigate(`/events/${eventId}`)}>
-              ← Back to Event Details
-            </button>
-            <h1>Event Results</h1>
-          </div>
-          <div className="results-content">
-            <p>Results for event: {eventId}</p>
-            <p>This view would show comprehensive analysis and results from all rounds.</p>
-            <p>Coming soon: Interactive visualizations and detailed insights.</p>
-          </div>
-        </div>
+        <AdvancedAI eventId={eventId} />
       </div>
     </>
   );
@@ -342,6 +337,18 @@ const CreateEventRoute: React.FC = () => {
   );
 };
 
+const TemplateManagerRoute: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <>
+      <Navigation />
+      <div className="dashboard-container">
+        <TemplateManager onBack={() => navigate('/events')} />
+      </div>
+    </>
+  );
+};
+
 // Loading Component
 const LoadingScreen: React.FC = () => (
   <div className="loading-screen">
@@ -363,6 +370,7 @@ function App() {
 
 const AppContent: React.FC = () => {
   const { user, loading, showSignIn, handleCreateSession, handleLogin } = useUser();
+  const location = useLocation();
 
   if (loading) {
     return <LoadingScreen />;
@@ -381,6 +389,7 @@ const AppContent: React.FC = () => {
       <Route path="/participate/:eventId" element={<ParticipateRoute />} />
       <Route path="/dialogue/:eventId" element={<DialogueRoute />} />
       <Route path="/results/:eventId" element={<ResultsRoute />} />
+      <Route path="/templates" element={<TemplateManagerRoute />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

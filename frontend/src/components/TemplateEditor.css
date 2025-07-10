@@ -1,0 +1,52 @@
+.template-editor {
+  padding: var(--spacing-unit-4);
+  background-color: var(--secondary-color);
+  border-radius: var(--border-radius-large);
+  border: 1px solid var(--border-color-dark);
+}
+
+.template-editor-header {
+  margin-bottom: var(--spacing-unit-3);
+  padding-bottom: var(--spacing-unit-3);
+  border-bottom: 1px solid var(--border-color-dark);
+}
+
+.template-editor-header h3 {
+  margin: 0;
+  color: var(--text-color-primary-dark);
+  font-size: 1.6rem;
+}
+
+/* 
+  .form-group, label, input, and textarea styles are inherited from index.css.
+  No need to redefine them here unless specific overrides are needed.
+*/
+
+.template-editor-footer {
+  margin-top: var(--spacing-unit-4);
+  padding-top: var(--spacing-unit-3);
+  border-top: 1px solid var(--border-color-dark);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-unit-2);
+}
+
+/*
+  The buttons in the footer should use the global .btn classes.
+  e.g. 
+  <button className="btn btn-secondary">Cancel</button>
+  <button className="btn btn-primary">Save Template</button>
+*/
+
+.template-editor hr {
+  margin: var(--spacing-unit-4) 0;
+  border: 0;
+  border-top: 1px solid var(--border-color-dark);
+}
+
+.template-editor .wizard-container {
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-medium);
+  padding: var(--spacing-unit-4);
+  background-color: var(--card-background-color-dark);
+} 

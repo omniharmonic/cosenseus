@@ -2,14 +2,14 @@
 Local Events router for the API Gateway - Simplified for SQLite
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
 from core.database_local import get_local_db
-from shared.models.database import Event, Inquiry, TemporaryUser, EventParticipant, EventStatus, EventRound, EventRoundStatus, Synthesis
+from shared.models.database import Event, Inquiry, TemporaryUser, EventParticipant, EventStatus, EventRound, EventRoundStatus, Synthesis, Response
 from .auth import get_current_user
 from pydantic import BaseModel, Field, field_validator
 
@@ -92,6 +92,16 @@ class DashboardResponse(BaseModel):
     organized_events: List[EventSummary]
     participating_events: List[EventSummary]
 
+class ResponseModel(BaseModel):
+    id: str
+    inquiry_id: str
+    user_id: str
+    content: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 class RoundStateResponse(BaseModel):
     current_round: int
@@ -154,6 +164,16 @@ async def get_dashboard_events(
         organized_events=organized_summaries,
         participating_events=participating_summaries
     )
+
+@router.get("/{event_id}/responses", response_model=List[ResponseModel])
+async def get_event_responses(event_id: str, db: Session = Depends(get_local_db)):
+    """Get all responses for a specific event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    responses = db.query(Response).join(Inquiry).filter(Inquiry.event_id == event_id).all()
+    return responses
 
 @router.get("/", response_model=List[EventSummary])
 async def list_events(
@@ -223,6 +243,89 @@ async def get_event_round_results(event_id: str, round_number: Optional[int] = N
         "round_number": target_round,
         "synthesis": synthesis
     }
+
+@router.post("/{event_id}/next-round", status_code=202)
+async def advance_to_next_round(
+    event_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
+):
+    """Admin-only endpoint to end the current round and start the next."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the event organizer can advance rounds.")
+
+    current_round_db = db.query(EventRound).filter_by(event_id=event_id, round_number=event.current_round).first()
+    if not current_round_db:
+        raise HTTPException(status_code=404, detail=f"Round {event.current_round} not found.")
+
+    if current_round_db.status != EventRoundStatus.WAITING_FOR_RESPONSES:
+        raise HTTPException(status_code=400, detail=f"Round {event.current_round} is not open for responses.")
+
+    # Update status to in_analysis
+    current_round_db.status = EventRoundStatus.IN_ANALYSIS
+    db.commit()
+
+    # Define the background task for AI analysis
+    def run_analysis_and_advance():
+        try:
+            # Re-fetch objects in the background task's session if needed
+            db_bg = next(get_local_db())
+            event_bg = db_bg.query(Event).filter(Event.id == event_id).first()
+            current_round_bg = db_bg.query(EventRound).filter_by(event_id=event_id, round_number=event_bg.current_round).first()
+
+            # 1. Perform AI Analysis and create a Synthesis object
+            # This is a placeholder for your actual analysis logic
+            # You would call your NLP service here
+            responses_for_round = db_bg.query(Response).join(Inquiry).filter(
+                Inquiry.event_id == event_id,
+                Inquiry.round_number == event_bg.current_round
+            ).all()
+
+            response_texts = [r.content for r in responses_for_round]
+            
+            # Simple synthesis for now
+            synthesis_content = f"Synthesis for round {event_bg.current_round}. Total responses: {len(response_texts)}. "
+            if response_texts:
+                synthesis_content += "Key themes appear to be: " + ", ".join(list(set(response_texts))[:3])
+
+
+            new_synthesis = Synthesis(
+                event_id=event_id,
+                round_number=event_bg.current_round,
+                content=synthesis_content
+            )
+            db_bg.add(new_synthesis)
+
+            # 2. Update current round status to ADMIN_REVIEW
+            current_round_bg.status = EventRoundStatus.ADMIN_REVIEW
+            
+            # 3. Create the next round
+            new_round = EventRound(
+                event_id=event_id,
+                round_number=event_bg.current_round + 1,
+                status=EventRoundStatus.WAITING_FOR_RESPONSES
+            )
+            db_bg.add(new_round)
+            
+            # 4. Update the event's current_round counter
+            event_bg.current_round += 1
+            
+            db_bg.commit()
+        except Exception as e:
+            # Log error, potentially update round status to an error state
+            print(f"Error during background analysis for event {event_id}, round {event_bg.current_round}: {e}")
+            db_bg.rollback()
+        finally:
+            db_bg.close()
+
+    background_tasks.add_task(run_analysis_and_advance)
+
+    return {"message": f"Round {event.current_round} analysis started. The next round will be available after admin review."}
 
 
 @router.post("/", response_model=EventResponse, status_code=201)

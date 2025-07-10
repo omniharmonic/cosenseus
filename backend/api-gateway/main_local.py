@@ -26,7 +26,7 @@ from core.database_local import init_local_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🚀 Starting Census Local Development Server...")
+    print("🚀 Starting cosenseus Local Development Server...")
     
     # Initialize local database
     init_local_db()
@@ -38,13 +38,13 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    print("🛑 Shutting down Census Local Development Server...")
+    print("🛑 Shutting down cosenseus Local Development Server...")
 
 # Create FastAPI app
 app = FastAPI(
-    title="Census Local Development API",
-    description="Local development API for the Civic Sense-Making Platform",
-    version="1.0.0",
+    title="cosenseus Local Development API",
+    description="API for local development of the cosenseus platform, using SQLite and local AI models.",
+    version="0.2.0",
     lifespan=lifespan
 )
 
@@ -70,7 +70,7 @@ app.include_router(inquiries_router, prefix="/api/v1") # Add new inquiries route
 @app.get("/")
 async def root():
     return {
-        "message": "Census Local Development API",
+        "message": "cosenseus Local Development API",
         "version": "1.0.0",
         "environment": "local",
         "docs": "/docs",

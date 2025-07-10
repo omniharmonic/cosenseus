@@ -8,20 +8,28 @@ interface SignInProps {
   onBack: () => void;
 }
 
-const SignIn: React.FC<SignInProps> = ({ onCreateSession, onLogin }) => {
-  const [isReturningUser, setIsReturningUser] = useState(false);
-  const [displayName, setDisplayName] = useState('');
+const SignIn: React.FC<SignInProps> = ({ onCreateSession, onLogin, onBack }) => {
+  const [userName, setUserName] = useState('');
   const [sessionCode, setSessionCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleCreateSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!displayName.trim()) return;
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onBack();
+    }
+  };
+
+  const onSessionCreate = async () => {
+    if (!userName.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      await onCreateSession(displayName.trim());
+      await onCreateSession(userName.trim());
+      // On success, App.tsx will handle closing the modal and navigation
     } catch (err) {
       setError('Failed to create session. Please try again.');
     } finally {
@@ -29,93 +37,67 @@ const SignIn: React.FC<SignInProps> = ({ onCreateSession, onLogin }) => {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sessionCode.trim()) return;
+  const onSessionLogin = async () => {
+    if (!sessionCode.trim()) {
+      setError('Please enter a session code.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       await onLogin(sessionCode.trim());
+      // On success, App.tsx will handle closing the modal and navigation
     } catch (err) {
-      setError('Invalid session code. Please check and try again.');
+      setError('Invalid session code. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="signin-container">
-      <div className="signin-card">
-        <div className="signin-header">
-          <div className="logo-container">
-            <Logo size="large" animated={true} />
+    <div className="sign-in-backdrop" onClick={handleBackdropClick}>
+      <div className="sign-in-box">
+        <button onClick={onBack} className="close-button" aria-label="Close">
+          &times;
+        </button>
+        <div className="cosenseus-logo">
+          <Logo size="medium" />
+        </div>
+        <h2 className="gradient-text">Join the Conversation</h2>
+        <p className="tagline">Create a session or enter a code to join an existing one.</p>
+
+        {error && <div className="error-message">{error}</div>}
+
+        <div className="form-section">
+          <div className="form-group">
+            <label htmlFor="name">First-time user?</label>
+            <input
+              id="name"
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="Enter your name"
+              disabled={loading}
+            />
           </div>
-          <h1>CENSUS</h1>
-          <p>AI-powered civic dialogue for real consensus</p>
-        </div>
-
-        <div className="signin-content">
-          {error && <p className="error-message">{error}</p>}
-
-          {!isReturningUser ? (
-            <form className="form-container" onSubmit={handleCreateSession}>
-              <h2>Create a New Session</h2>
-              <p>Enter your name to begin. You'll receive a session code to return later.</p>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter your name"
-                className="signin-field"
-                aria-label="Display Name"
-              />
-              <button 
-                type="submit"
-                className="btn-primary" 
-                disabled={!displayName.trim() || loading}
-              >
-                {loading ? 'Continuing...' : 'Continue'}
-              </button>
-              <button 
-                type="button"
-                className="btn-link"
-                onClick={() => setIsReturningUser(true)}
-              >
-                Returning user? Sign in here.
-              </button>
-            </form>
-          ) : (
-            <form className="form-container" onSubmit={handleLogin}>
-              <h2>Resume Session</h2>
-              <p>Enter the session code you received previously.</p>
-              <input
-                type="text"
-                value={sessionCode}
-                onChange={(e) => setSessionCode(e.target.value)}
-                placeholder="Enter your session code"
-                className="signin-field"
-                aria-label="Session Code"
-              />
-              <button 
-                type="submit"
-                className="btn-primary" 
-                disabled={!sessionCode.trim() || loading}
-              >
-                {loading ? 'Signing In...' : 'Sign In'}
-              </button>
-              <button 
-                type="button"
-                className="btn-link"
-                onClick={() => setIsReturningUser(false)}
-              >
-                Back to new user
-              </button>
-            </form>
-          )}
-        </div>
-
-        <div className="signin-footer">
-          <p>Your participation helps build better civic dialogue</p>
+          <button onClick={onSessionCreate} className="btn btn-primary" style={{ width: '100%', marginBottom: 'var(--spacing-unit-3)' }} disabled={loading}>
+            {loading ? 'Creating...' : 'Create Session'}
+          </button>
+          
+          <div className="form-group">
+            <label htmlFor="sessionCode">Returning user?</label>
+            <input
+              id="sessionCode"
+              type="text"
+              value={sessionCode}
+              onChange={(e) => setSessionCode(e.target.value)}
+              placeholder="Enter session code"
+              disabled={loading}
+            />
+          </div>
+          <button onClick={onSessionLogin} className="btn btn-secondary" style={{ width: '100%' }} disabled={loading}>
+            {loading ? 'Joining...' : 'Join with Code'}
+          </button>
         </div>
       </div>
     </div>

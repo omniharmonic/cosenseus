@@ -1,19 +1,19 @@
-# Census
+# cosenseus
 
-An AI-powered platform that enhances civic discourse by processing natural language input from participants and generating structured insights about consensus, alignment, and opportunities for generative dialogue.
+CoSenseus is an AI-enabled dialogue tool for building consensus through generative conversation. It transforms natural language input from participants into structured insights, helping groups and communities move beyond debate and foster shared understanding.
 
 ## Overview
 
-The Civic Sense-Making Platform operates as a distributed system with microservices architecture, designed to handle real-time natural language processing, persistent user profile management, and complex dialogue analysis at scale.
+CoSenseus operates as a local-first application, ensuring privacy and user control. It uses local language models (via Ollama) to perform real-time analysis of civic and organizational dialogue. The current version is focused on providing a powerful, single-event experience with a clear path toward a scalable, cloud-native architecture.
 
-### Key Features
+### Key Features (Local-First MVP)
 
-- **Event Creation & Management**: Create civic events with customizable inquiries
-- **Natural Language Processing**: Voice and text input processing with semantic analysis
-- **Polis-Style Clustering**: Advanced opinion clustering and visualization
-- **Persistent Civic Profiles**: User-owned data with cross-event persistence
-- **Multi-Round Conversations**: Support for iterative rounds of input and synthesis
-- **Real-time Visualization**: Interactive opinion landscapes and consensus mapping
+- **Local-First AI**: All analysis is performed on your local machine using Ollama.
+- **Event Creation & Management**: Create and manage single dialogue events.
+- **Multi-Round Conversations**: Support for iterative rounds of input and AI-powered synthesis.
+- **Real-time Visualization**: Interactive visualizations for sentiment, word clouds, and consensus.
+- **Admin-in-the-Loop**: Administrators review and approve AI-generated prompts before they are sent to participants.
+- **Dynamic Reporting**: Flexible options to export raw data and generate formatted reports.
 
 ## Architecture
 

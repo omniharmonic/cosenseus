@@ -1,0 +1,17 @@
+.empty-state-container {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+}
+
+.empty-state-container h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.empty-state-container p {
+  color: #666;
+  margin-bottom: 20px;
+} 

@@ -1,0 +1,77 @@
+.template-manager {
+  padding: var(--spacing-unit-4) var(--spacing-unit-5);
+  background-color: var(--card-background-color-dark);
+  border-radius: var(--border-radius-large);
+  border: 1px solid var(--border-color-dark);
+  box-shadow: var(--shadow-medium);
+  max-width: 900px;
+  margin: var(--spacing-unit-5) auto;
+}
+
+.tm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-unit-4);
+  padding-bottom: var(--spacing-unit-3);
+  border-bottom: 1px solid var(--border-color-dark);
+}
+
+.tm-header h2 {
+  margin: 0;
+  color: var(--text-color-primary-dark);
+  font-size: 1.8rem;
+}
+
+.tm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit-2);
+}
+
+.tm-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-unit-2) var(--spacing-unit-3);
+  background-color: transparent;
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-medium);
+  transition: all 0.2s ease;
+}
+
+.tm-card:hover {
+    border-color: rgba(var(--primary-color-rgb), 0.7);
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-small);
+}
+
+.tm-card-content {
+  flex-grow: 1;
+}
+
+.tm-card-content h4 {
+  margin: 0 0 4px 0;
+  color: var(--text-color-primary-dark);
+  font-size: 1.1rem;
+}
+
+.tm-card-content p {
+  margin: 0;
+  color: var(--text-color-secondary-dark);
+  font-size: 0.9rem;
+}
+
+.tm-card-actions {
+  display: flex;
+  gap: var(--spacing-unit-2);
+}
+
+/* 
+  Modal styles have been removed from this component-specific file.
+  These should be handled by a global modal component or stylesheet
+  to ensure consistency and avoid duplication.
+  The buttons in the template manager should use the global .btn classes.
+  e.g. <button className="btn btn-secondary btn-sm">Edit</button>
+*/ 

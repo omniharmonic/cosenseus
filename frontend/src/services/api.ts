@@ -8,6 +8,15 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+export interface EventTemplate {
+  id: string;
+  name: string;
+  description: string;
+  event_data: any;
+  created_at: string;
+  updated_at: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -22,7 +31,7 @@ class ApiService {
     const url = `${this.baseUrl}${endpoint}`;
     
     // Add session code to headers if available
-    const sessionCode = localStorage.getItem('census_session_code');
+    const sessionCode = localStorage.getItem('cosenseus_session_code');
     const authHeaders: HeadersInit = sessionCode ? { 'X-Session-Code': sessionCode } : {};
 
     const defaultOptions: RequestInit = {
@@ -204,6 +213,61 @@ class ApiService {
 
   async getConsensusGraph(eventId: string): Promise<ApiResponse<any>> {
     return this.request(`/ai/consensus-graph/${eventId}`);
+  }
+
+  async getPolisAnalysis(eventId: string, roundNumber: number): Promise<ApiResponse<any>> {
+    return this.request(`/ai/polis-analysis/${eventId}/${roundNumber}`);
+  }
+
+  async getEventRoundState(eventId: string): Promise<ApiResponse<any>> {
+    return this.request(`/events/${eventId}/round-state`);
+  }
+
+  async advanceEventRound(eventId: string): Promise<ApiResponse<any>> {
+    return this.request(`/events/${eventId}/next-round`, { method: 'POST' });
+  }
+
+  // Dialogue Moderation
+  async getSynthesisForReview(eventId: string, roundNumber: number): Promise<ApiResponse<any>> {
+    return this.request(`/ai/synthesis-review/${eventId}/${roundNumber}`);
+  }
+
+  async updateSynthesis(synthesisId: string, data: { next_round_prompts: any }): Promise<ApiResponse<any>> {
+    return this.request(`/ai/synthesis-review/${synthesisId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async approveSynthesis(synthesisId: string): Promise<ApiResponse<any>> {
+    return this.request(`/ai/synthesis-review/${synthesisId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  // Event Templates
+  async getEventTemplates(): Promise<ApiResponse<EventTemplate[]>> {
+    return this.request('/templates/events');
+  }
+
+  async createEventTemplate(templateData: Partial<EventTemplate>): Promise<ApiResponse<EventTemplate>> {
+    return this.request('/templates/events', {
+      method: 'POST',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async updateEventTemplate(templateId: string, templateData: Partial<EventTemplate>): Promise<ApiResponse<EventTemplate>> {
+    return this.request(`/templates/events/${templateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async deleteEventTemplate(templateId: string): Promise<ApiResponse<void>> {
+    return this.request(`/templates/events/${templateId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Local development status

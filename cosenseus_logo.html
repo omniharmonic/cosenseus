@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Census AI Logo</title>
+    <title>cosenseus AI Logo</title>
     <style>
         body {
             margin: 0;
@@ -78,15 +78,12 @@
         }
 
         .brand-name {
-            font-size: 48px;
-            font-weight: 700;
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
             letter-spacing: 2px;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #40e0d0, #48cae4, #0077b6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 30px rgba(64, 224, 208, 0.5);
+            color: #002266;
+            margin-top: 20px;
         }
 
         .tagline {
@@ -170,74 +167,29 @@
 <body>
     <div class="logo-container">
         <div class="logo">
-            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="logo">
                 <defs>
-                    <linearGradient id="gradientStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#40e0d0;stop-opacity:1" />
-                        <stop offset="50%" style="stop-color:#48cae4;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#0077b6;stop-opacity:1" />
+                    <!-- Dark Royal Blue Gradient -->
+                    <linearGradient id="outer-circle-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#5C85D6;stop-opacity:1" />
+                      <stop offset="50%" style="stop-color:#2F58B8;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#1A294A;stop-opacity:1" />
                     </linearGradient>
-                    
-                    <radialGradient id="nodeGradient" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" style="stop-color:#40e0d0;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#0077b6;stop-opacity:0.8" />
-                    </radialGradient>
-                    
-                    <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#40e0d0;stop-opacity:0.8" />
-                        <stop offset="100%" style="stop-color:#48cae4;stop-opacity:0.4" />
+                    <linearGradient id="node-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#5C85D6;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#2F58B8;stop-opacity:1" />
                     </linearGradient>
-                    
-                    <radialGradient id="coreGradient" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.9" />
-                        <stop offset="50%" style="stop-color:#40e0d0;stop-opacity:0.8" />
-                        <stop offset="100%" style="stop-color:#0077b6;stop-opacity:0.6" />
+                    <radialGradient id="ai-core-gradient">
+                        <stop offset="0%" style="stop-color:#5C85D6;stop-opacity:0.8" />
+                        <stop offset="100%" style="stop-color:#1A294A;stop-opacity:1" />
                     </radialGradient>
                 </defs>
-                
-                <!-- Outer convergence circle -->
-                <circle class="convergence-circle" cx="100" cy="100" r="85" />
-                
-                <!-- Dialogue nodes around the circle -->
-                <circle class="dialogue-node" cx="100" cy="30" r="8" />
-                <circle class="dialogue-node" cx="150" cy="50" r="7" />
-                <circle class="dialogue-node" cx="170" cy="100" r="8" />
-                <circle class="dialogue-node" cx="150" cy="150" r="7" />
-                <circle class="dialogue-node" cx="100" cy="170" r="8" />
-                <circle class="dialogue-node" cx="50" cy="150" r="7" />
-                <circle class="dialogue-node" cx="30" cy="100" r="8" />
-                <circle class="dialogue-node" cx="50" cy="50" r="7" />
-                
-                <!-- Connection lines from center circle edge to outer nodes -->
-                <line class="connection-line" x1="100" y1="75" x2="100" y2="30" />
-                <line class="connection-line" x1="118" y1="82" x2="150" y2="50" />
-                <line class="connection-line" x1="125" y1="100" x2="170" y2="100" />
-                <line class="connection-line" x1="118" y1="118" x2="150" y2="150" />
-                <line class="connection-line" x1="100" y1="125" x2="100" y2="170" />
-                <line class="connection-line" x1="82" y1="118" x2="50" y2="150" />
-                <line class="connection-line" x1="75" y1="100" x2="30" y2="100" />
-                <line class="connection-line" x1="82" y1="82" x2="50" y2="50" />
-                
-                <!-- Central AI core -->
-                <circle class="ai-core" cx="100" cy="100" r="25" />
-                
-                <!-- Inner neural network pattern -->
-                <circle class="dialogue-node" cx="100" cy="100" r="3" opacity="0.9" />
-                <circle class="dialogue-node" cx="88" cy="95" r="2" opacity="0.7" />
-                <circle class="dialogue-node" cx="112" cy="105" r="2" opacity="0.7" />
-                <circle class="dialogue-node" cx="95" cy="110" r="2" opacity="0.7" />
-                <circle class="dialogue-node" cx="105" cy="90" r="2" opacity="0.7" />
-                
-                <!-- Neural connections -->
-                <line class="connection-line" x1="100" y1="100" x2="88" y2="95" opacity="0.5" />
-                <line class="connection-line" x1="100" y1="100" x2="112" y2="105" opacity="0.5" />
-                <line class="connection-line" x1="100" y1="100" x2="95" y2="110" opacity="0.5" />
-                <line class="connection-line" x1="100" y1="100" x2="105" y2="90" opacity="0.5" />
+                <!-- Logo components -->
             </svg>
         </div>
         
         <div class="brand-text">
-            <div class="brand-name">CENSUS</div>
+            <div class="brand-name">cosenseus</div>
             <div class="tagline">AI-Enabled Consensus Building</div>
         </div>
     </div>

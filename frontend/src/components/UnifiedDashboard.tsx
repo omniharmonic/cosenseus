@@ -15,9 +15,10 @@ interface EventSummary {
 interface UnifiedDashboardProps {
   onEventSelect: (eventId: string, action: 'view' | 'participate' | 'dialogue') => void;
   onCreateEvent: () => void;
+  onManageTemplates: () => void;
 }
 
-const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCreateEvent }) => {
+const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCreateEvent, onManageTemplates }) => {
   const [organizedEvents, setOrganizedEvents] = useState<EventSummary[]>([]);
   const [participatingEvents, setParticipatingEvents] = useState<EventSummary[]>([]);
   const [activeTab, setActiveTab] = useState<'admin' | 'participant'>('admin');
@@ -45,6 +46,21 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCr
     fetchDashboardData();
   }, []);
 
+  const handleDelete = async (eventId: string) => {
+    if (window.confirm('Are you sure you want to permanently delete this event?')) {
+      try {
+        const response = await apiService.deleteEvent(eventId);
+        if (response.error) {
+          setError(response.error);
+        } else {
+          setOrganizedEvents(organizedEvents.filter(event => event.id !== eventId));
+        }
+      } catch (err) {
+        setError('An unexpected error occurred while deleting the event.');
+      }
+    }
+  };
+
   const renderEventList = (events: EventSummary[], isOrganizer: boolean) => {
     if (events.length === 0) {
       return <p>No events to display.</p>;
@@ -61,7 +77,10 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCr
               <span>Created: {new Date(event.created_at).toLocaleDateString()}</span>
               <div className="event-actions">
                 {isOrganizer ? (
-                  <button onClick={() => onEventSelect(event.id, 'view')}>Manage</button>
+                  <>
+                    <button onClick={() => onEventSelect(event.id, 'view')}>Manage</button>
+                    <button onClick={() => handleDelete(event.id)} className="btn-danger">Delete</button>
+                  </>
                 ) : (
                   <button onClick={() => onEventSelect(event.id, 'participate')}>Join</button>
                 )}
@@ -102,7 +121,10 @@ const UnifiedDashboard: React.FC<UnifiedDashboardProps> = ({ onEventSelect, onCr
       <div className="dashboard-content">
         {activeTab === 'admin' && (
           <div className="admin-header">
-            <button className="create-event-btn" onClick={onCreateEvent}>
+            <button className="btn btn-secondary" onClick={onManageTemplates}>
+              Manage Templates
+            </button>
+            <button className="btn btn-primary" onClick={onCreateEvent}>
               + Create New Event
             </button>
           </div>

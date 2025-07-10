@@ -14,6 +14,8 @@ from core.database_local import get_local_db
 # Import local database models
 from shared.models.database import Event, Inquiry, Response
 from nlp_service.ollama_client import ollama_client
+from nlp_service.core.opinion_analyzer import OpinionAnalyzer
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -151,43 +153,15 @@ async def get_event_summary(event_id: str, db: Session = Depends(get_local_db)):
     Get a comprehensive summary of an event using local Ollama AI.
     """
     try:
-        from sqlalchemy import text
-        
-        # Get event data using raw SQL
-        event_result = db.execute(text("""
-            SELECT id, title, description, event_type, status
-            FROM events 
-            WHERE id = :event_id
-        """), {"event_id": event_id})
-        event = event_result.fetchone()
+        # Use ORM to fetch data
+        event = db.query(Event).filter(Event.id == event_id).first()
         
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        # Get inquiries using raw SQL
-        inquiries_result = db.execute(text("""
-            SELECT id, title, content, inquiry_type
-            FROM inquiries 
-            WHERE event_id = :event_id
-        """), {"event_id": event_id})
-        inquiries = inquiries_result.fetchall()
-        
-        # Get responses using raw SQL
-        responses_result = db.execute(text("""
-            SELECT COUNT(*) as count
-            FROM responses r
-            JOIN inquiries i ON r.inquiry_id = i.id
-            WHERE i.event_id = :event_id
-        """), {"event_id": event_id})
-        responses_count = responses_result.fetchone().count
-        
-        # Get participant count using raw SQL
-        participant_result = db.execute(text("""
-            SELECT COUNT(*) as count
-            FROM event_participants 
-            WHERE event_id = :event_id
-        """), {"event_id": event_id})
-        participant_count = participant_result.fetchone().count
+        inquiries = event.inquiries
+        responses_count = len(event.responses)
+        participant_count = len(event.participants)
         
         # Prepare summary data
         summary_data = {
@@ -195,7 +169,7 @@ async def get_event_summary(event_id: str, db: Session = Depends(get_local_db)):
                 "title": event.title,
                 "description": event.description,
                 "event_type": event.event_type,
-                "status": event.status
+                "status": event.status.value if event.status else "N/A"
             },
             "statistics": {
                 "inquiries_count": len(inquiries),
@@ -204,9 +178,9 @@ async def get_event_summary(event_id: str, db: Session = Depends(get_local_db)):
             },
             "inquiries": [
                 {
-                    "title": inquiry.title,
-                    "content": inquiry.content,
-                    "type": inquiry.inquiry_type
+                    "title": inquiry.question_text,
+                    "content": inquiry.description,
+                    "type": inquiry.response_type
                 } for inquiry in inquiries
             ]
         }
@@ -246,14 +220,8 @@ Please provide a comprehensive summary of this civic engagement event."""
                     "recommendations": [],
                     "next_steps": "Review responses manually"
                 }
-        except:
-            parsed_summary = {
-                "event_overview": ai_summary,
-                "key_insights": [],
-                "participant_engagement": "Analysis pending",
-                "recommendations": [],
-                "next_steps": "Review responses manually"
-            }
+        except json.JSONDecodeError:
+            parsed_summary = {"error": "Failed to parse AI summary response."}
         
         return {
             "event_id": event_id,
@@ -262,6 +230,9 @@ Please provide a comprehensive summary of this civic engagement event."""
         }
         
     except Exception as e:
+        # Log the exception for debugging
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
 
 @router.post("/ai/analyze-event/{event_id}/round/{round_number}")
@@ -290,7 +261,7 @@ async def analyze_event_round(
         
         # Get responses for this specific round
         responses_result = db.execute(text("""
-            SELECT r.id, r.content, r.created_at, i.title as inquiry_title
+            SELECT r.id, r.content, r.created_at, i.question_text as inquiry_title
             FROM responses r
             JOIN inquiries i ON r.inquiry_id = i.id
             WHERE i.event_id = :event_id AND r.round_number = :round_number
@@ -461,3 +432,59 @@ async def consensus_graph(event_id: str, db: Session = Depends(get_local_db)):
         return {"event_id": event_id, "consensus_clusters": consensus_result.get("consensus_clusters", []), "summary": consensus_result.get("summary", "")}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate consensus graph: {str(e)}") 
+
+def _run_polis_analysis(responses: List[str]):
+    """
+    Helper function to run the full Polis-style analysis pipeline.
+    This function orchestrates the entire process from raw text to clustered opinions.
+    """
+    # Step 1: Extract a concise list of key statements from the batch of all responses.
+    # This uses an LLM to find the core ideas expressed by participants.
+    statements_result = ollama_client.extract_statements(responses)
+    statements = statements_result.get("statements", [])
+    if not statements:
+        raise HTTPException(status_code=500, detail="Failed to extract statements for analysis.")
+
+    # Step 2: For each individual response, map it against the list of extracted statements.
+    # This determines whether a participant agrees, disagrees, or is neutral on each key statement.
+    user_statement_matrix = []
+    for i, response_text in enumerate(responses):
+        mapping_result = ollama_client.map_response_to_statements(response_text, statements)
+        user_statement_matrix.append({
+            "user_id": f"participant_{i+1}",  # Using index as a placeholder user ID
+            "response": response_text,
+            "mapping": mapping_result.get("mapping", [])
+        })
+
+    # Step 3: Perform dimensionality reduction and clustering on the user-statement matrix.
+    # This converts the text-based agreement data into a numerical format,
+    # then uses PCA and K-Means to find opinion groups.
+    opinion_analyzer = OpinionAnalyzer()
+    analysis_results = opinion_analyzer.analyze(user_statement_matrix, statements)
+
+    return {
+        "statements": statements,
+        "user_positions": analysis_results
+    }
+
+
+@router.post("/ai/polis-analysis/event/{event_id}/round/{round_number}")
+async def polis_analysis_for_event_round(event_id: str, round_number: int, db: Session = Depends(get_local_db)):
+    """
+    Performs a Polis-style analysis on a round of responses for a specific event.
+    """
+    try:
+        # Get responses for this specific round
+        responses_result = db.execute(text("""
+            SELECT r.content
+            FROM responses r
+            WHERE r.event_id = :event_id AND r.round_number = :round_number
+        """), {"event_id": event_id, "round_number": round_number})
+        responses = [row[0] for row in responses_result.fetchall()]
+        
+        if not responses:
+            raise HTTPException(status_code=404, detail="No responses found for this event round.")
+
+        return _run_polis_analysis(responses)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Polis-style analysis for event round failed: {str(e)}") 

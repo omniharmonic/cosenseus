@@ -5,6 +5,7 @@ import ResponseClusterMap from './ResponseClusterMap';
 import SentimentTimeline from './SentimentTimeline';
 import WordCloud from './WordCloud';
 import ConsensusGraph from './ConsensusGraph';
+import DialogueModeration from './DialogueModeration';
 
 interface Inquiry {
   id: string;
@@ -54,6 +55,11 @@ interface EventDetailsProps {
   onNavigateToResults?: (eventId: string) => void;
 }
 
+interface RoundState {
+  current_round: number;
+  status: string;
+}
+
 const EventDetails: React.FC<EventDetailsProps> = ({ 
   eventId, 
   userRole, 
@@ -69,6 +75,8 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<'participate' | 'results' | null>(null);
+  const [roundState, setRoundState] = useState<RoundState | null>(null);
+  const [isAdvancingRound, setIsAdvancingRound] = useState(false);
 
   const fetchEventDetails = async () => {
     setLoading(true);
@@ -110,6 +118,38 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     }
   };
 
+  const fetchRoundState = async () => {
+    try {
+      const response = await apiService.getEventRoundState(eventId);
+      if (response.data) {
+        setRoundState(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch round state:', err);
+      // We don't need to show an error for this, as it's for admins mostly
+    }
+  };
+
+  const handleAdvanceRound = async () => {
+    if (userRole !== 'admin') return;
+
+    setIsAdvancingRound(true);
+    try {
+      const response = await apiService.advanceEventRound(eventId);
+      if (response.error) {
+        setError(response.error);
+      } else {
+        // Re-fetch state to update UI
+        await fetchRoundState();
+      }
+    } catch (err) {
+      setError('Failed to advance to the next round.');
+      console.error('Error advancing round:', err);
+    } finally {
+      setIsAdvancingRound(false);
+    }
+  };
+
   const copyToClipboard = async (text: string, type: 'participate' | 'results') => {
     try {
       await navigator.clipboard.writeText(text);
@@ -133,7 +173,10 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   useEffect(() => {
     fetchEventDetails();
     fetchEventAnalysis();
-  }, [eventId]);
+    if (userRole === 'admin') {
+      fetchRoundState();
+    }
+  }, [eventId, userRole]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -214,6 +257,15 @@ const EventDetails: React.FC<EventDetailsProps> = ({
               )}
             </>
           )}
+          {userRole === 'admin' && roundState?.status === 'waiting_for_responses' && (
+            <button 
+              className="btn-primary" 
+              onClick={handleAdvanceRound}
+              disabled={isAdvancingRound}
+            >
+              {isAdvancingRound ? 'Processing...' : 'End Round & Start Analysis'}
+            </button>
+          )}
           <button 
             className="btn-secondary"
             onClick={() => copyToClipboard(getParticipateLink(), 'participate')}
@@ -244,6 +296,12 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           )}
         </div>
       </div>
+
+      {userRole === 'admin' && roundState?.status === 'admin_review' && (
+        <div className="moderation-section">
+          <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} />
+        </div>
+      )}
 
       {/* Event Information */}
       <div className="event-info-grid">

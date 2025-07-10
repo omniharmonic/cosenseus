@@ -37,7 +37,6 @@ interface OpinionResponse {
 
 interface AdvancedAIProps {
   eventId: string;
-  responses: OpinionResponse[];
   onAnalysisComplete?: (results: AnalysisResults) => void;
 }
 
@@ -51,7 +50,6 @@ interface AnalysisResults {
 
 const AdvancedAI: React.FC<AdvancedAIProps> = ({
   eventId,
-  responses,
   onAnalysisComplete
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,149 +57,28 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
   const [selectedAnalysis, setSelectedAnalysis] = useState<'clustering' | 'entities' | 'consensus'>('clustering');
   const [processingStep, setProcessingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [responses, setResponses] = useState<OpinionResponse[]>([]);
 
-  // Mock data for demonstration
-  const mockClusters: HierarchicalCluster[] = [
-    {
-      id: 'cluster-1',
-      centroid: [-0.6, 0.3],
-      responses: responses.slice(0, 15),
-      size: 15,
-      color: '#ff6b6b',
-      label: 'Progressive Transportation',
-      consensus_score: 0.85,
-      level: 1,
-      subclusters: [
-        {
-          id: 'subcluster-1-1',
-          centroid: [-0.7, 0.4],
-          responses: responses.slice(0, 8),
-          size: 8,
-          color: '#ff5252',
-          label: 'Public Transit Advocates',
-          consensus_score: 0.92,
-          level: 2
-        },
-        {
-          id: 'subcluster-1-2',
-          centroid: [-0.5, 0.2],
-          responses: responses.slice(8, 15),
-          size: 7,
-          color: '#ff8a80',
-          label: 'Bike Infrastructure Supporters',
-          consensus_score: 0.78,
-          level: 2
+  useEffect(() => {
+    const fetchResponses = async () => {
+      setIsProcessing(true);
+      setError(null);
+      try {
+        const responseData = await apiService.getEventResponses(eventId);
+        if (responseData.data) {
+          // Assuming the API returns something like { responses: [...] }
+          setResponses(responseData.data.responses || []);
+        } else {
+          throw new Error(responseData.error || 'Failed to fetch responses.');
         }
-      ]
-    },
-    {
-      id: 'cluster-2',
-      centroid: [0.2, -0.4],
-      responses: responses.slice(15, 30),
-      size: 15,
-      color: '#4ecdc4',
-      label: 'Fiscal Conservatives',
-      consensus_score: 0.72,
-      level: 1,
-      subclusters: [
-        {
-          id: 'subcluster-2-1',
-          centroid: [0.3, -0.5],
-          responses: responses.slice(15, 22),
-          size: 7,
-          color: '#26a69a',
-          label: 'Budget Hawks',
-          consensus_score: 0.88,
-          level: 2
-        },
-        {
-          id: 'subcluster-2-2',
-          centroid: [0.1, -0.3],
-          responses: responses.slice(22, 30),
-          size: 8,
-          color: '#80cbc4',
-          label: 'Private Sector Advocates',
-          consensus_score: 0.65,
-          level: 2
-        }
-      ]
-    },
-    {
-      id: 'cluster-3',
-      centroid: [0.8, 0.1],
-      responses: responses.slice(30, 45),
-      size: 15,
-      color: '#45b7d1',
-      label: 'Environmental Activists',
-      consensus_score: 0.91,
-      level: 1,
-      subclusters: [
-        {
-          id: 'subcluster-3-1',
-          centroid: [0.9, 0.2],
-          responses: responses.slice(30, 37),
-          size: 7,
-          color: '#1976d2',
-          label: 'Climate Action',
-          consensus_score: 0.95,
-          level: 2
-        },
-        {
-          id: 'subcluster-3-2',
-          centroid: [0.7, 0.0],
-          responses: responses.slice(37, 45),
-          size: 8,
-          color: '#64b5f6',
-          label: 'Green Infrastructure',
-          consensus_score: 0.87,
-          level: 2
-        }
-      ]
-    }
-  ];
-
-  const mockEntities: CivicEntity[] = [
-    {
-      id: 'entity-1',
-      text: 'public transportation',
-      type: 'policy',
-      confidence: 0.95,
-      frequency: 23,
-      sentiment: 0.7
-    },
-    {
-      id: 'entity-2',
-      text: 'bike lanes',
-      type: 'policy',
-      confidence: 0.88,
-      frequency: 18,
-      sentiment: 0.8
-    },
-    {
-      id: 'entity-3',
-      text: 'tax burden',
-      type: 'issue',
-      confidence: 0.92,
-      frequency: 15,
-      sentiment: -0.3
-    },
-    {
-      id: 'entity-4',
-      text: 'climate change',
-      type: 'issue',
-      confidence: 0.97,
-      frequency: 31,
-      sentiment: -0.8
-    },
-    {
-      id: 'entity-5',
-      text: 'local businesses',
-      type: 'stakeholder',
-      confidence: 0.85,
-      frequency: 12,
-      sentiment: 0.4
-    }
-  ];
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred while fetching responses.');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+    fetchResponses();
+  }, [eventId]);
 
   const runAdvancedAnalysis = async () => {
     setIsProcessing(true);
@@ -249,23 +126,11 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
           label: cluster.theme || `Cluster ${index + 1}`,
           consensus_score: 0.7 + Math.random() * 0.3, // Mock score
           level: 1
-        })) || mockClusters,
-        entities: mockEntities, // Keep mock entities for now
-        consensus_areas: aiAnalysis.key_themes || [
-          'Support for improved public transportation infrastructure',
-          'Concern about environmental sustainability',
-          'Need for balanced budget allocation'
-        ],
-        dialogue_opportunities: aiAnalysis.suggested_actions || [
-          'Bridge progressive and conservative views on funding mechanisms',
-          'Explore public-private partnerships for infrastructure',
-          'Address climate concerns while maintaining economic growth'
-        ],
-        sentiment_trends: [
-          { round: 1, overall_sentiment: 0.2, engagement: 0.7 },
-          { round: 2, overall_sentiment: 0.4, engagement: 0.8 },
-          { round: 3, overall_sentiment: 0.6, engagement: 0.9 }
-        ]
+        })) || [],
+        entities: aiAnalysis.key_entities || [],
+        consensus_areas: aiAnalysis.key_themes || [],
+        dialogue_opportunities: aiAnalysis.suggested_actions || [],
+        sentiment_trends: aiSummary.sentiment_over_time || []
       };
 
       setAnalysisResults(results);

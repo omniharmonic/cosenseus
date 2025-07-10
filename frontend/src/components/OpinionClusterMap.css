@@ -1,0 +1,66 @@
+.opinion-cluster-map-container {
+  width: 100%;
+  padding: var(--spacing-unit-4);
+  background-color: var(--card-background-color-dark);
+  border-radius: var(--border-radius-large);
+  border: 1px solid var(--border-color-dark);
+  box-shadow: var(--shadow-medium);
+}
+
+.ocm-header {
+  margin-bottom: var(--spacing-unit-3);
+  padding-bottom: var(--spacing-unit-3);
+  border-bottom: 1px solid var(--border-color-dark);
+}
+
+.ocm-header h3 {
+  margin: 0;
+  color: var(--text-color-primary-dark);
+  font-size: 1.5rem;
+}
+
+.plot-container {
+    background-color: var(--background-color-dark);
+    border-radius: var(--border-radius-medium);
+    padding: var(--spacing-unit);
+    border: 1px solid var(--border-color-dark);
+}
+
+.statements-list {
+  margin-top: var(--spacing-unit-4);
+  padding: var(--spacing-unit-3);
+  background-color: var(--secondary-color);
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-medium);
+}
+
+.statements-list h4 {
+  margin: 0 0 var(--spacing-unit-2) 0;
+  color: var(--text-color-secondary-dark);
+  border-bottom: 1px solid var(--border-color-dark);
+  padding-bottom: var(--spacing-unit-2);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.statements-list ol {
+  padding-left: var(--spacing-unit-3);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.statements-list li {
+  margin-bottom: var(--spacing-unit);
+  line-height: 1.5;
+  color: var(--text-color-secondary-dark);
+  padding-left: var(--spacing-unit);
+}
+
+.ocm-error-message {
+  color: var(--error-text-color-dark);
+  background-color: var(--error-background-color-dark);
+  border: 1px solid var(--error-color);
+  padding: var(--spacing-unit-3);
+  border-radius: var(--border-radius-medium);
+  text-align: center;
+} 

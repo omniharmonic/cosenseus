@@ -1,62 +1,17 @@
 .App {
   text-align: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--background-gradient-dark);
+  color: var(--text-color-primary-dark);
 }
 
-.App-header {
-  padding: 40px 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.App-header h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
-
-.App-header p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.6;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.feature-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.feature-card h3 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  color: #fff;
-}
-
-.feature-card p {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
+.gradient-text {
+  /* Create a dark royal blue gradient */
+  background: linear-gradient(45deg, var(--primary-color-light), var(--accent-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
 }
 
 /* Navigation Styles */
@@ -64,16 +19,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background: #ffffff;
-  border-bottom: 2px solid #e9ecef;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: var(--spacing-unit-2) var(--spacing-unit-4);
+  background: var(--card-background-color-dark);
+  border-bottom: 1px solid var(--border-color-dark);
+  box-shadow: var(--shadow-medium);
 }
 
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-unit-2);
 }
 
 .nav-logo {
@@ -83,10 +38,9 @@
 
 .nav-brand h2 {
   margin: 0;
-  color: #3498db;
   font-size: 1.8rem;
   font-weight: 700;
-  background: linear-gradient(45deg, #40e0d0, #48cae4, #0077b6);
+  background: linear-gradient(45deg, var(--primary-color-light), var(--accent-color));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -94,228 +48,64 @@
 
 .nav-links {
   display: flex;
-  gap: 1rem;
+  gap: var(--spacing-unit-2);
 }
 
 .nav-link {
-  padding: 0.5rem 1rem;
-  background: none;
-  border: none;
-  color: #6c757d;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.nav-link:hover {
-  color: #3498db;
-  background: #f8f9fa;
+  /* This class now primarily uses the .nav-link-button styles from index.css */
+  /* We can add specific overrides here if needed */
 }
 
 .nav-link.active {
-  color: #3498db;
-  background: #e7f3ff;
-  font-weight: 600;
+  color: var(--text-color-primary-dark);
+  background-color: var(--primary-color);
 }
 
 .nav-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-unit-2);
 }
 
 .nav-signout {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  /* This now uses .btn and .btn-secondary from index.css */
+  padding: var(--spacing-unit) var(--spacing-unit-2);
+  font-size: 0.9rem;
 }
 
-.nav-signout:hover {
-  background: #c0392b;
+.user-display-name {
+  color: var(--text-color-secondary-dark);
 }
 
-.user-role {
-  padding: 0.5rem 1rem;
-  background: #3498db;
-  color: white;
-  border-radius: 20px;
-  font-size: 0.85rem;
+.user-display-name strong {
+  color: var(--text-color-primary-dark);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
-/* CTA Section */
-.cta-section {
-  margin-top: 3rem;
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-.cta-button, .cta-button-secondary {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 150px;
-}
-
-.cta-button {
-  background: #3498db;
-  color: white;
-}
-
-.cta-button:hover {
-  background: #2980b9;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
-}
-
-.cta-button-secondary {
-  background: transparent;
-  color: #3498db;
-  border: 2px solid #3498db;
-}
-
-.cta-button-secondary:hover {
-  background: #3498db;
-  color: white;
-}
-
-/* Hero Section */
-.hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 60px 20px 40px 20px;
-  text-align: center;
-}
-.hero-section h1 {
-  font-size: 3rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  letter-spacing: -1px;
-}
-.tagline {
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-  color: #e0e7ff;
-}
-.hero-cta {
-  margin-top: 2rem;
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-/* How It Works */
-.how-it-works {
-  background: #fff;
-  color: #333;
-  padding: 40px 20px;
-  text-align: center;
-}
-.how-it-works h2 {
-  font-size: 2rem;
-  margin-bottom: 1.5rem;
-  color: #3498db;
-}
-.steps-list {
-  list-style: decimal inside;
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 0;
-  text-align: left;
-  font-size: 1.1rem;
-  color: #444;
-}
-.steps-list li {
-  margin-bottom: 1rem;
-  line-height: 1.7;
-}
-
-/* Discover Events */
-.discover-events {
-  background: #f8f9fa;
-  padding: 40px 20px;
-  text-align: center;
-}
-.discover-events h2 {
-  font-size: 2rem;
-  color: #764ba2;
-  margin-bottom: 1rem;
-}
-.discover-events p {
-  color: #555;
-  margin-bottom: 2rem;
-  font-size: 1.1rem;
-}
-
-/* App Footer */
+/* Footer Styles */
 .app-footer {
-  background: #22223b;
-  color: #e0e7ff;
-  padding: 24px 0 12px 0;
-  text-align: center;
-  margin-top: 40px;
+  padding: var(--spacing-unit-4) 0;
+  margin-top: auto;
+  background: var(--card-background-color-dark);
+  border-top: 1px solid var(--border-color-dark);
 }
+
 .footer-content {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-unit-4);
 }
+
 .footer-links a {
-  color: #a3bffa;
-  text-decoration: underline;
-  margin: 0 0.5rem;
-  font-size: 1rem;
+  color: var(--text-color-secondary-dark);
+  margin-left: var(--spacing-unit-3);
+  transition: color 0.2s ease;
 }
+
 .footer-links a:focus, .footer-links a:hover {
-  color: #fff;
-  outline: 2px solid #3498db;
-}
-
-/* Accessibility & Focus States */
-button:focus, .cta-button:focus, .cta-button-secondary:focus, input:focus {
-  outline: 2px solid #3498db;
-  outline-offset: 2px;
-}
-
-/* Responsive Layout for New Sections */
-@media (max-width: 768px) {
-  .hero-section h1 {
-    font-size: 2rem;
-  }
-  .tagline {
-    font-size: 1.1rem;
-  }
-  .how-it-works h2, .discover-events h2 {
-    font-size: 1.3rem;
-  }
-  .steps-list {
-    font-size: 1rem;
-  }
-  .app-footer {
-    font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero-section {
-    padding: 40px 10px 20px 10px;
-  }
-  .how-it-works, .discover-events {
-    padding: 24px 8px;
-  }
+  color: var(--primary-color-light);
+  text-decoration: underline;
 } 

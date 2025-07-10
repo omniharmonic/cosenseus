@@ -1,0 +1,71 @@
+.dialogue-moderation-panel {
+  background-color: var(--card-background-color-dark);
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-large);
+  padding: var(--spacing-unit-4) var(--spacing-unit-5);
+  margin-top: var(--spacing-unit-4);
+  box-shadow: var(--shadow-medium);
+  transition: all 0.3s ease;
+}
+
+.dialogue-moderation-panel:hover {
+  box-shadow: var(--shadow-large);
+  border-color: rgba(var(--primary-color-rgb), 0.5);
+}
+
+.dm-header h3 {
+  margin: 0 0 var(--spacing-unit) 0;
+  color: var(--text-color-primary-dark);
+  font-size: 1.5rem;
+}
+
+.dm-header h4 {
+  margin: 0 0 var(--spacing-unit-4) 0;
+  color: var(--text-color-secondary-dark);
+  font-size: 1.1rem;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-color-dark);
+  padding-bottom: var(--spacing-unit-3);
+}
+
+.synthesis-content {
+  background-color: var(--secondary-color);
+  padding: var(--spacing-unit-3);
+  border-radius: var(--border-radius-medium);
+  border: 1px solid var(--border-color-dark);
+  margin-bottom: var(--spacing-unit-3);
+  color: var(--text-color-secondary-dark);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.prompts-editor-label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-color-secondary-dark);
+  margin-bottom: var(--spacing-unit);
+}
+
+/* 
+  Textarea and button styles are inherited from index.css.
+  The specific overrides in this file have been removed to ensure consistency.
+  Make sure to use the .btn .btn-primary classes on the button elements.
+*/
+
+.moderation-actions {
+  margin-top: var(--spacing-unit-3);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-unit-2);
+}
+
+.moderation-error {
+    color: var(--error-text-color-dark);
+    background-color: var(--error-background-color-dark);
+    border: 1px solid var(--error-color);
+    margin-bottom: var(--spacing-unit-3);
+    padding: var(--spacing-unit-2);
+    border-radius: var(--border-radius-medium);
+    font-size: 0.9rem;
+    text-align: center;
+} 

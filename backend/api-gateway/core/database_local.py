@@ -12,16 +12,17 @@ from shared.models.database import (
     EventParticipant, EventRound, Synthesis, UserProfileEmbedding
 )
 
-# Local development database path
-LOCAL_DB_PATH = Path(__file__).parent.parent.parent.parent / "local_data" / "census_local.db"
-LOCAL_DB_PATH.parent.mkdir(exist_ok=True)
+# Define the path to the local database file
+# It's placed in the project root's `local_data` directory
+LOCAL_DB_PATH = Path(__file__).parent.parent.parent.parent.parent / "local_data" / "cosenseus_local.db"
+LOCAL_DB_URL = f"sqlite:///{LOCAL_DB_PATH}"
 
-# SQLite database URL for local development
-LOCAL_DATABASE_URL = f"sqlite:///{LOCAL_DB_PATH}"
+# Ensure the local_data directory exists
+LOCAL_DB_PATH.parent.mkdir(exist_ok=True)
 
 # Create SQLAlchemy engine for local development
 local_engine = create_engine(
-    LOCAL_DATABASE_URL,
+    LOCAL_DB_URL,
     connect_args={"check_same_thread": False},  # Required for SQLite
     echo=False  # Set to True for SQL query logging
 )

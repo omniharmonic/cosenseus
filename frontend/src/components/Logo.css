@@ -1,15 +1,12 @@
-.census-logo {
+.cosenseus-logo {
   display: inline-block;
   position: relative;
 }
-
-.census-logo svg {
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 0 20px rgba(64, 224, 208, 0.3));
+.cosenseus-logo svg {
+  overflow: visible; /* Allows elements to be visible outside the SVG frame */
 }
 
-/* Base styles for all elements */
+/* Base styles for logo elements */
 .convergence-circle {
   fill: none;
   stroke: url(#gradientStroke);
@@ -17,64 +14,53 @@
   stroke-dasharray: 0 267;
 }
 
+/* Outer circle segments */
+.outer-segment {
+  fill: none;
+  stroke: url(#outer-circle-gradient);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform-origin: center;
+  animation: convergence 3s forwards ease-in-out;
+}
+
+/* Dialogue nodes (smaller dots) */
 .dialogue-node {
-  fill: url(#nodeGradient);
-  opacity: 0.8;
+  fill: url(#node-gradient);
+  transform-origin: center;
+  animation: flow 2s infinite alternate ease-in-out, glow 3s infinite alternate;
 }
 
-.connection-line {
-  stroke: url(#connectionGradient);
-  stroke-width: 1.5;
-  opacity: 0.4;
-  stroke-dasharray: 3, 4;
+/* Specific animation delays for dialogue nodes */
+.dialogue-node:nth-of-type(1) { animation-delay: 0s; }
+.dialogue-node:nth-of-type(2) { animation-delay: -0.5s; }
+.dialogue-node:nth-of-type(3) { animation-delay: -1s; }
+.dialogue-node:nth-of-type(4) { animation-delay: -1.5s; }
+
+
+/* Keyframe Animations */
+
+/* Undulating flow for the dialogue nodes */
+@keyframes flow {
+  0% {
+    transform: scale(0.95) translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.05) translateY(-2px);
+    opacity: 1;
+  }
 }
 
-.ai-core {
-  fill: url(#coreGradient);
-}
 
-/* Animation classes */
-.convergence-circle.animated {
-  animation: converge 3s ease-in-out infinite;
-}
-
-.dialogue-node.animated {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.dialogue-node.animated:nth-child(odd) {
-  animation-delay: 0.5s;
-}
-
-.connection-line.animated {
-  animation: flow 2s linear infinite;
-}
-
-.ai-core.animated {
-  animation: glow 3s ease-in-out infinite;
-}
-
-/* Animation keyframes */
-@keyframes converge {
-  0% { stroke-dasharray: 0 267; }
-  50% { stroke-dasharray: 133 134; }
-  100% { stroke-dasharray: 267 0; }
-}
-
+/* AI core pulsing */
 @keyframes pulse {
   0%, 100% { 
-    opacity: 0.8; 
     transform: scale(1); 
   }
   50% { 
-    opacity: 1; 
-    transform: scale(1.1); 
+    transform: scale(1.03); 
   }
-}
-
-@keyframes flow {
-  0% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: 10; }
 }
 
 @keyframes glow {
@@ -82,44 +68,61 @@
     filter: brightness(1); 
   }
   50% { 
-    filter: brightness(1.3); 
+    filter: brightness(1.1); 
   }
 }
 
 /* Size variations */
-.census-logo.small {
-  filter: drop-shadow(0 0 10px rgba(64, 224, 208, 0.2));
+.cosenseus-logo.small {
+  width: 40px;
+  height: 40px;
 }
-
-.census-logo.medium {
-  filter: drop-shadow(0 0 15px rgba(64, 224, 208, 0.25));
+.cosenseus-logo.medium {
+  width: 80px;
+  height: 80px;
 }
-
-.census-logo.large {
-  filter: drop-shadow(0 0 20px rgba(64, 224, 208, 0.3));
+.cosenseus-logo.large {
+  width: 150px;
+  height: 150px;
 }
 
 /* Hover effects */
-.census-logo:hover {
-  transform: scale(1.05);
-  transition: transform 0.3s ease;
+.cosenseus-logo:hover {
+  cursor: pointer;
 }
 
-.census-logo:hover .ai-core {
-  filter: brightness(1.2);
+.cosenseus-logo:hover .ai-core {
+  transform: scale(1.05);
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.cosenseus-logo:hover .dialogue-node {
+  transform: scale(1.1);
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Different sizes for text */
+.cosenseus-logo.small {
+  /* No text for small logo */
+}
+.cosenseus-logo.medium {
+  /* Styles for medium logo text if any */
+}
+.cosenseus-logo.large {
+  /* Styles for large logo text if any */
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .census-logo.small {
+  .cosenseus-logo.small {
     filter: drop-shadow(0 0 8px rgba(64, 224, 208, 0.2));
   }
   
-  .census-logo.medium {
+  .cosenseus-logo.medium {
     filter: drop-shadow(0 0 12px rgba(64, 224, 208, 0.25));
   }
   
-  .census-logo.large {
+  .cosenseus-logo.large {
     filter: drop-shadow(0 0 16px rgba(64, 224, 208, 0.3));
   }
 } 

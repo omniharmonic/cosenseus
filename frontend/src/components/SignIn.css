@@ -1,246 +1,88 @@
-.signin-container {
-  min-height: 100vh;
+.sign-in-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  z-index: 1000;
 }
 
-.signin-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  padding: 40px;
-  max-width: 500px;
+.sign-in-box {
   width: 100%;
+  max-width: 420px;
+  padding: var(--spacing-unit-5);
+  background-color: var(--card-background-color-dark);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-large);
   text-align: center;
+  border: 1px solid var(--border-color-dark);
+  position: relative;
 }
 
-.logo-container {
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: center;
+.sign-in-box .cosenseus-logo {
+  margin-bottom: var(--spacing-unit-3);
 }
 
-.signin-header h1 {
-  color: #2c3e50;
-  margin: 0 0 8px 0;
-  font-size: 2.5rem;
+.sign-in-box .gradient-text {
+  font-size: 2rem;
   font-weight: 700;
-  background: linear-gradient(45deg, #40e0d0, #48cae4, #0077b6);
+  margin-bottom: var(--spacing-unit);
+  background: linear-gradient(45deg, var(--primary-color), var(--primary-color-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: 0 0 30px rgba(64, 224, 208, 0.5);
+  text-fill-color: transparent;
 }
 
-.signin-header p {
-  color: #7f8c8d;
-  margin: 0 0 32px 0;
-  font-size: 1.1rem;
-}
-
-.signin-content h2 {
-  color: #2c3e50;
-  margin: 0 0 24px 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.role-selection {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.role-option {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  border: 2px solid #e1e8ed;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: #f8f9fa;
-}
-
-.role-option:hover {
-  border-color: #667eea;
-  background: #f0f4ff;
-  transform: translateY(-2px);
-}
-
-.role-option.selected {
-  border-color: #667eea;
-  background: #f0f4ff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-}
-
-.role-icon {
-  font-size: 2rem;
-  margin-right: 16px;
-  flex-shrink: 0;
-}
-
-.role-info h3 {
-  color: #2c3e50;
-  margin: 0 0 4px 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  text-align: left;
-}
-
-.role-info p {
-  color: #7f8c8d;
-  margin: 0;
-  font-size: 0.95rem;
-  text-align: left;
-  line-height: 1.4;
-}
-
-.username-input {
-  margin-bottom: 32px;
-  text-align: left;
-}
-
-.username-input label {
-  display: block;
-  color: #2c3e50;
-  margin-bottom: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.username-field {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e1e8ed;
-  border-radius: 8px;
+.sign-in-box .tagline {
+  color: var(--text-color-secondary-dark);
+  margin-bottom: var(--spacing-unit-4);
   font-size: 1rem;
-  transition: border-color 0.3s ease;
-  box-sizing: border-box;
 }
 
-.username-field:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.form-section {
+  text-align: left;
+  margin-top: var(--spacing-unit-3);
 }
 
-.signin-field {
-  width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-top: 1rem;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #0077b6;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-top: 1rem;
-  font-size: 0.9rem;
-}
-
-.btn-primary:disabled {
-  background-color: #a0a0a0;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
+/* 
+  Input and button styles are now inherited from index.css.
+  The specific overrides in this file have been removed to ensure consistency.
+  Make sure to use the .btn .btn-primary classes on the button element.
+*/
 
 .error-message {
-  color: #d9534f;
-  background-color: #f2dede;
-  border: 1px solid #ebccd1;
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
+  color: var(--error-text-color-dark);
+  background-color: var(--error-background-color-dark);
+  border: 1px solid var(--error-color);
+  padding: var(--spacing-unit-2);
+  border-radius: var(--border-radius-medium);
+  margin-bottom: var(--spacing-unit-3);
+  font-size: 0.9rem;
   text-align: center;
 }
 
-.signin-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.btn-primary, .btn-secondary {
-  padding: 12px 24px;
+.close-button {
+  position: absolute;
+  top: var(--spacing-unit-2);
+  right: var(--spacing-unit-2);
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  color: var(--text-color-secondary-dark);
+  font-size: 1.5rem;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 120px;
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius-pill);
+  transition: all 0.2s ease;
 }
 
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #5a6fd8;
-  transform: translateY(-1px);
-}
-
-.btn-primary:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-secondary {
-  background: #ecf0f1;
-  color: #2c3e50;
-}
-
-.btn-secondary:hover {
-  background: #d5dbdb;
-  transform: translateY(-1px);
-}
-
-.signin-footer p {
-  color: #7f8c8d;
-  margin: 0;
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-/* Responsive design */
-@media (max-width: 600px) {
-  .signin-card {
-    padding: 24px;
-    margin: 10px;
-  }
-  
-  .signin-header h1 {
-    font-size: 2rem;
-  }
-  
-  .role-option {
-    padding: 16px;
-  }
-  
-  .role-icon {
-    font-size: 1.5rem;
-    margin-right: 12px;
-  }
-  
-  .signin-actions {
-    flex-direction: column;
-  }
-  
-  .btn-primary, .btn-secondary {
-    width: 100%;
-  }
+.close-button:hover {
+  background-color: var(--secondary-color);
+  color: var(--text-color-primary-dark);
 } 
