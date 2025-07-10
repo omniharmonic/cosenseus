@@ -333,7 +333,12 @@ class Synthesis(Base):
     # AI-generated prompts for the next round, pending admin approval
     next_round_prompts = Column(JSON, nullable=True)
 
-    # Consensus analysis
+    # Consensus analysis - fields that match frontend expectations
+    key_themes = Column(JSON, nullable=True)  # Key themes from analysis
+    consensus_points = Column(JSON, nullable=True)  # Areas of agreement/consensus
+    dialogue_opportunities = Column(JSON, nullable=True)  # Opportunities for further dialogue
+    
+    # Additional analysis fields
     consensus_areas = Column(JSON, nullable=True)  # Areas of agreement
     divergent_perspectives = Column(JSON, nullable=True)  # Areas of disagreement
     nuanced_positions = Column(JSON, nullable=True)  # Complex middle positions

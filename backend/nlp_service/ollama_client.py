@@ -262,12 +262,17 @@ Please analyze these round-specific responses and provide insights."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
+            logger.info(f"[DEBUG] Ollama raw response for round {round_number}: {response}")
+            
             if "{" in response and "}" in response:
                 start = response.find("{")
                 end = response.rfind("}") + 1
                 json_str = response[start:end]
-                return json.loads(json_str)
+                parsed_result = json.loads(json_str)
+                logger.info(f"[DEBUG] Parsed analysis result: {parsed_result}")
+                return parsed_result
             else:
+                logger.warning(f"[DEBUG] No valid JSON found in response: {response}")
                 return {"summary": "Unable to parse round analysis"}
         except Exception as e:
             logger.error(f"Round insights generation failed: {e}")

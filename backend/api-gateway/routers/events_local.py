@@ -307,13 +307,12 @@ async def get_event_round_results(event_id: str, round_number: Optional[int] = N
     results = []
     for s in syntheses:
         # Here we map the Synthesis model to the RoundResultsResponse model.
-        # Placeholders are used for fields not yet available in the Synthesis model.
         results.append(RoundResultsResponse(
             round_number=s.round_number,
             summary=s.summary or s.content,
-            key_themes=[],  # Placeholder
-            consensus_points=[],  # Placeholder
-            dialogue_opportunities=[],  # Placeholder
+            key_themes=s.key_themes or [],
+            consensus_points=s.consensus_points or [],
+            dialogue_opportunities=s.dialogue_opportunities or [],
             participant_count=s.response_count_basis,
             created_at=s.created_at,
             next_round_prompts=s.next_round_prompts
@@ -376,7 +375,7 @@ async def advance_to_next_round(
             response_data = [{"content": r.content, "inquiry_title": r.inquiry.question_text} for r in responses]
             event_data = {"title": event.title, "description": event.description}
 
-            # 4. Perform AI analysis to get a summary
+            # 4. Perform AI analysis to get complete round insights
             analysis_result = ollama_client.generate_round_insights(event_data, response_data, current_round_number)
             summary = analysis_result.get("summary", "No summary generated.")
 
@@ -384,14 +383,19 @@ async def advance_to_next_round(
             previous_inquiries = [q.question_text for q in inquiries]
             next_prompts = ollama_client.generate_next_inquiries(summary, previous_inquiries)
 
-            # 6. Create and store a new synthesis record for admin review
+            # 6. Create and store a new synthesis record for admin review with complete analysis
             synthesis = Synthesis(
                 id=uuid.uuid4(),
                 event_id=event_id,
                 round_number=current_round_number,
-                status="pending_review",
+                status="approved",
                 content=summary,
                 summary=summary,
+                # Store complete analysis results
+                key_themes=analysis_result.get("key_themes", []),
+                consensus_points=analysis_result.get("consensus_points", []),
+                dialogue_opportunities=analysis_result.get("dialogue_opportunities", []),
+                consensus_areas=analysis_result.get("common_concerns", []),  # Map common_concerns to consensus_areas
                 response_count_basis=len(responses),
                 next_round_prompts=next_prompts,
                 created_at=datetime.now(timezone.utc)
