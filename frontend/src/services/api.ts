@@ -148,8 +148,12 @@ class ApiService {
     return this.request(`/events/${eventId}/responses`);
   }
 
-  async getEventInquiries(eventId: string): Promise<ApiResponse<any>> {
-    return this.request(`/inquiries/event/${eventId}`);
+  async getEventInquiries(eventId: string, roundNumber?: number): Promise<ApiResponse<any>> {
+    let url = `/inquiries/event/${eventId}`;
+    if (roundNumber) {
+      url += `?round_number=${roundNumber}`;
+    }
+    return this.request(url);
   }
 
   async getEventRoundResults(eventId: string, roundNumber?: number): Promise<ApiResponse<any[]>> {
@@ -230,10 +234,10 @@ class ApiService {
   }
 
   async advanceEventRound(eventId: string): Promise<ApiResponse<any>> {
-    return this.request(`/events/${eventId}/next-round`, { method: 'POST' });
+    return this.request(`/events/${eventId}/advance-round`, { method: 'POST' });
   }
 
-  // Dialogue Moderation
+  // Dialogue Moderation - FORCED UPDATE
   async getSynthesisForReview(eventId: string, roundNumber: number): Promise<ApiResponse<any>> {
     return this.request(`/ai/synthesis-review/${eventId}/${roundNumber}`);
   }
@@ -253,7 +257,7 @@ class ApiService {
 
   // Event Templates
   async getEventTemplates(): Promise<ApiResponse<EventTemplate[]>> {
-    return this.request('/templates/events');
+    return this.request<EventTemplate[]>('/templates');
   }
 
   async createEventTemplate(templateData: Partial<EventTemplate>): Promise<ApiResponse<EventTemplate>> {
@@ -278,9 +282,8 @@ class ApiService {
 
   // Local development status
   async getLocalStatus(): Promise<ApiResponse<any>> {
-    return this.request('/local/status');
+    return this.request('/dev/status');
   }
 }
 
-export const apiService = new ApiService();
-export default ApiService; 
+export const apiService = new ApiService(); 

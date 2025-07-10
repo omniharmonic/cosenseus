@@ -1,71 +1,109 @@
-.dialogue-moderation-panel {
-  background-color: var(--card-background-color-dark);
-  border: 1px solid var(--border-color-dark);
-  border-radius: var(--border-radius-large);
-  padding: var(--spacing-unit-4) var(--spacing-unit-5);
-  margin-top: var(--spacing-unit-4);
-  box-shadow: var(--shadow-medium);
-  transition: all 0.3s ease;
+/* DialogueModeration.css */
+
+.dialogue-moderation-container {
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  max-width: 800px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.dialogue-moderation-panel:hover {
-  box-shadow: var(--shadow-large);
-  border-color: rgba(var(--primary-color-rgb), 0.5);
+.moderation-title {
+  text-align: center;
+  color: #333;
+  margin-bottom: 2rem;
 }
 
-.dm-header h3 {
-  margin: 0 0 var(--spacing-unit) 0;
-  color: var(--text-color-primary-dark);
-  font-size: 1.5rem;
+.synthesis-summary-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #fff;
+  border-left: 4px solid #40e0d0;
+  border-radius: 4px;
 }
 
-.dm-header h4 {
-  margin: 0 0 var(--spacing-unit-4) 0;
-  color: var(--text-color-secondary-dark);
+.synthesis-summary-section h3 {
+  margin-top: 0;
+  color: #0077b6;
+}
+
+.draft-prompts-section .instructions {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-editor {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.prompt-editor:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.prompt-header h4 {
+  margin: 0;
+  color: #333;
   font-size: 1.1rem;
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-color-dark);
-  padding-bottom: var(--spacing-unit-3);
 }
 
-.synthesis-content {
-  background-color: var(--secondary-color);
-  padding: var(--spacing-unit-3);
-  border-radius: var(--border-radius-medium);
-  border: 1px solid var(--border-color-dark);
-  margin-bottom: var(--spacing-unit-3);
-  color: var(--text-color-secondary-dark);
-  font-size: 0.95rem;
+.prompt-content {
+  color: #555;
   line-height: 1.6;
 }
 
-.prompts-editor-label {
-  display: block;
-  font-weight: 500;
-  color: var(--text-color-secondary-dark);
-  margin-bottom: var(--spacing-unit);
+.prompt-editor textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 100px;
 }
 
-/* 
-  Textarea and button styles are inherited from index.css.
-  The specific overrides in this file have been removed to ensure consistency.
-  Make sure to use the .btn .btn-primary classes on the button elements.
-*/
+.button-edit {
+  background: none;
+  border: 1px solid #0077b6;
+  color: #0077b6;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.button-edit:hover {
+  background-color: #0077b6;
+  color: #fff;
+}
 
 .moderation-actions {
-  margin-top: var(--spacing-unit-3);
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-unit-2);
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
-.moderation-error {
-    color: var(--error-text-color-dark);
-    background-color: var(--error-background-color-dark);
-    border: 1px solid var(--error-color);
-    margin-bottom: var(--spacing-unit-3);
-    padding: var(--spacing-unit-2);
-    border-radius: var(--border-radius-medium);
-    font-size: 0.9rem;
-    text-align: center;
+.dialogue-moderation-error, .dialogue-moderation-empty {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.1rem;
+  color: #777;
 } 

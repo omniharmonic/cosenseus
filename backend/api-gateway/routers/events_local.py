@@ -4,7 +4,7 @@ Local Events router for the API Gateway - Simplified for SQLite
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
 
@@ -97,7 +97,7 @@ class DashboardResponse(BaseModel):
 class ResponseModel(BaseModel):
     id: str
     inquiry_id: str
-    user_id: str
+    user_id: Optional[str] = None
     content: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -122,13 +122,25 @@ class SynthesisResponse(BaseModel):
     content: str
     created_at: datetime
 
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, uuid.UUID):
+            return str(v)
+        return v
+
     class Config:
         from_attributes = True
 
 class RoundResultsResponse(BaseModel):
     round_number: int
-    synthesis: Optional[SynthesisResponse]
-    # TODO: Add analysis results here when available
+    summary: Optional[str] = None
+    key_themes: List[str] = []
+    consensus_points: List[str] = []
+    dialogue_opportunities: List[str] = []
+    participant_count: Optional[int] = 0
+    created_at: datetime
+    next_round_prompts: Optional[List[Dict[str, Any]]] = None
 
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_dashboard_events(
@@ -275,29 +287,41 @@ async def publish_event(
     )
 
 
-@router.get("/{event_id}/round-results", response_model=RoundResultsResponse)
+@router.get("/{event_id}/round-results", response_model=List[RoundResultsResponse])
 async def get_event_round_results(event_id: str, round_number: Optional[int] = None, db: Session = Depends(get_local_db)):
-    """Get the analysis and synthesis results for a specific round of an event."""
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+    """
+    Get the analysis results for all completed rounds of an event up to a specific round number.
+    """
+    if round_number is None:
+        raise HTTPException(status_code=400, detail="round_number query parameter is required.")
 
-    target_round = round_number if round_number is not None else event.current_round - 1
-    
-    if target_round < 1:
-        raise HTTPException(status_code=400, detail="No results available for this round.")
-
-    synthesis = db.query(Synthesis).filter(
+    syntheses = db.query(Synthesis).filter(
         Synthesis.event_id == event_id,
-        Synthesis.round_number == target_round
-    ).first()
+        Synthesis.round_number <= round_number,
+        Synthesis.status == "approved"
+    ).order_by(Synthesis.round_number).all()
 
-    return {
-        "round_number": target_round,
-        "synthesis": synthesis
-    }
+    if not syntheses:
+        return []
 
-@router.post("/{event_id}/next-round", status_code=202)
+    results = []
+    for s in syntheses:
+        # Here we map the Synthesis model to the RoundResultsResponse model.
+        # Placeholders are used for fields not yet available in the Synthesis model.
+        results.append(RoundResultsResponse(
+            round_number=s.round_number,
+            summary=s.summary or s.content,
+            key_themes=[],  # Placeholder
+            consensus_points=[],  # Placeholder
+            dialogue_opportunities=[],  # Placeholder
+            participant_count=s.response_count_basis,
+            created_at=s.created_at,
+            next_round_prompts=s.next_round_prompts
+        ))
+    return results
+
+
+@router.post("/{event_id}/advance-round", status_code=202)
 async def advance_to_next_round(
     event_id: str,
     background_tasks: BackgroundTasks,
@@ -305,86 +329,154 @@ async def advance_to_next_round(
     current_user: TemporaryUser = Depends(get_current_user)
 ):
     """
-    Advance an event to the next round, triggering analysis of the current round.
-    This is a background task.
+    Moves the event to the next round, triggering AI analysis in the background.
     """
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+
     if str(event.organizer_id) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to advance this event")
+        raise HTTPException(status_code=403, detail="Only the event organizer can advance the round")
+    
+    current_round = db.query(EventRound).filter_by(event_id=event_id, round_number=event.current_round).first()
+    if current_round:
+        current_round.status = EventRoundStatus.IN_ANALYSIS
+        db.commit()
 
-    # Define the background task
     def run_analysis_and_advance():
-        with Session(db.get_bind()) as session:
-            # Re-fetch event inside the new session
-            event_in_task = session.query(Event).filter(Event.id == event_id).first()
-            if not event_in_task:
-                print(f"Event {event_id} not found in background task.")
-                return
-
-            current_round_number = event_in_task.current_round
+        # 1. Get a new database session for this background task
+        from core.database_local import LocalSessionLocal
+        local_db = LocalSessionLocal()
+        try:
+            # 2. Fetch all necessary data
+            event = local_db.query(Event).filter(Event.id == event_id).first()
+            current_round_number = event.current_round if event else 1
             
-            # 1. Fetch all responses for the current round
-            responses = session.query(Response).join(Inquiry).filter(
+            inquiries = local_db.query(Inquiry).filter(
                 Inquiry.event_id == event_id,
                 Inquiry.round_number == current_round_number
             ).all()
             
-            response_texts = [r.content for r in responses]
+            inquiry_ids = [str(i.id) for i in inquiries]
+            
+            responses = local_db.query(Response).filter(
+                Response.inquiry_id.in_(inquiry_ids)
+            ).all()
 
-            # 2. Generate a synthesis of the responses
-            synthesis_summary = "No summary available."
-            if response_texts:
-                synthesis_summary = ollama_client.generate_round_insights(
-                    event_data={"title": event_in_task.title},
-                    responses=[{"content": r} for r in response_texts],
-                    round_number=current_round_number
-                ).get('summary', 'Synthesis could not be generated.')
+            if not responses:
+                print(f"No responses for round {current_round_number}, cannot analyze.")
+                # Update round status to show it's waiting, even if no analysis is done
+                current_round = local_db.query(EventRound).filter_by(event_id=event_id, round_number=current_round_number).first()
+                if current_round:
+                    current_round.status = EventRoundStatus.ADMIN_REVIEW
+                    local_db.commit()
+                return
 
-            # 3. Save the synthesis for the completed round
-            new_synthesis = Synthesis(
-                event_id=uuid.UUID(event_id),
+            # 3. Prepare data for Ollama
+            response_data = [{"content": r.content, "inquiry_title": r.inquiry.question_text} for r in responses]
+            event_data = {"title": event.title, "description": event.description}
+
+            # 4. Perform AI analysis to get a summary
+            analysis_result = ollama_client.generate_round_insights(event_data, response_data, current_round_number)
+            summary = analysis_result.get("summary", "No summary generated.")
+
+            # 5. Generate next set of inquiries based on the summary
+            previous_inquiries = [q.question_text for q in inquiries]
+            next_prompts = ollama_client.generate_next_inquiries(summary, previous_inquiries)
+
+            # 6. Create and store a new synthesis record for admin review
+            synthesis = Synthesis(
+                id=uuid.uuid4(),
+                event_id=event_id,
                 round_number=current_round_number,
-                content=synthesis_summary
+                status="pending_review",
+                content=summary,
+                summary=summary,
+                response_count_basis=len(responses),
+                next_round_prompts=next_prompts,
+                created_at=datetime.now(timezone.utc)
             )
-            session.add(new_synthesis)
+            local_db.add(synthesis)
 
-            # 4. Generate new inquiries for the next round
-            next_round_number = current_round_number + 1
-            all_previous_inquiries = session.query(Inquiry).filter(Inquiry.event_id == event_id).all()
-            previous_inquiry_texts = [q.question_text for q in all_previous_inquiries]
-            
-            new_inquiries_data = ollama_client.generate_next_inquiries(synthesis_summary, previous_inquiry_texts)
-            
-            for index, inquiry_data in enumerate(new_inquiries_data):
-                new_inquiry = Inquiry(
-                    event_id=uuid.UUID(event_id),
-                    question_text=inquiry_data.get('title', 'Untitled Inquiry'),
-                    description=inquiry_data.get('content', ''),
-                    response_type='open_ended',
-                    order_index=index,
-                    round_number=next_round_number
-                )
-                session.add(new_inquiry)
+            # 7. Update event round status
+            current_round = local_db.query(EventRound).filter_by(event_id=event_id, round_number=current_round_number).first()
+            if current_round:
+                current_round.status = EventRoundStatus.ADMIN_REVIEW
+                local_db.commit()
 
-            # 5. Advance the event to the next round
-            event_in_task.current_round = next_round_number
-            
-            # 6. Create a new round entry in the database
-            new_round = EventRound(
-                event_id=uuid.UUID(event_id),
-                round_number=next_round_number,
-                status=EventRoundStatus.WAITING_FOR_RESPONSES
-            )
-            session.add(new_round)
-
-            session.commit()
-            print(f"Event {event_id} advanced to round {next_round_number} with {len(new_inquiries_data)} new inquiries.")
+        except Exception as e:
+            print(f"Error in background task for advancing round: {e}")
+            # Optionally, revert state or log to a persistent store
+        finally:
+            local_db.close()
 
     background_tasks.add_task(run_analysis_and_advance)
     
-    return {"message": f"Analysis of round {event.current_round} started. The event will advance to the next round shortly."}
+    return {"message": "Analysis for the current round has been initiated. Please check back for review."}
+
+
+@router.get("/{event_id}/synthesis-review")
+def get_synthesis_for_review(event_id: str, db: Session = Depends(get_local_db)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    synthesis = db.query(Synthesis).filter(
+        Synthesis.event_id == event_id,
+        Synthesis.round_number == event.current_round
+    ).order_by(Synthesis.created_at.desc()).first()
+
+    if not synthesis:
+        raise HTTPException(status_code=404, detail="Synthesis for the current round not found.")
+
+    return {
+        "round_number": synthesis.round_number,
+        "synthesis_content": synthesis.content,
+        "next_round_prompts": synthesis.next_round_prompts
+    }
+
+class ApprovedPrompts(BaseModel):
+    prompts: List[Dict[str, str]]
+
+@router.post("/{event_id}/approve-synthesis")
+def approve_synthesis_and_advance(
+    event_id: str, 
+    payload: ApprovedPrompts,
+    db: Session = Depends(get_local_db)
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    next_round_number = event.current_round + 1
+
+    # Create new inquiries from the approved prompts
+    for i, prompt_data in enumerate(payload.prompts):
+        new_inquiry = Inquiry(
+            id=uuid.uuid4(),
+            event_id=event.id,
+            round_number=next_round_number,
+            question_text=prompt_data.get('title', 'Untitled Inquiry'),
+            description=prompt_data.get('content', ''),
+            order_index=i
+        )
+        db.add(new_inquiry)
+
+    # Update the event's round number
+    event.current_round = next_round_number
+    
+    # Create the new round object
+    new_round = EventRound(
+        id=uuid.uuid4(),
+        event_id=event.id,
+        round_number=next_round_number,
+        status=EventRoundStatus.WAITING_FOR_RESPONSES
+    )
+    db.add(new_round)
+
+    db.commit()
+
+    return {"message": f"Successfully advanced to round {next_round_number}"}
 
 
 @router.post("/", response_model=EventResponse, status_code=201)

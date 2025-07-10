@@ -10,6 +10,7 @@ import Logo from './components/Logo';
 import EventWizard from './components/EventWizard';
 import TemplateManager from './components/TemplateManager';
 import AdvancedAI from './components/AdvancedAI';
+import { NotificationProvider } from './components/common/NotificationProvider';
 import './App.css';
 import { apiService } from './services/api';
 
@@ -353,19 +354,21 @@ const TemplateManagerRoute: React.FC = () => {
 // Loading Component
 const LoadingScreen: React.FC = () => (
   <div className="loading-screen">
-    <div className="loading-spinner"></div>
-    <p>Loading Census...</p>
+    <Logo size="large" animated={true} />
+    <p>Loading Your Experience...</p>
   </div>
 );
 
 // Main App Component
 function App() {
   return (
-    <UserProvider>
+    <NotificationProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AppContent />
+        <UserProvider>
+          <AppContent />
+        </UserProvider>
       </Router>
-    </UserProvider>
+    </NotificationProvider>
   );
 }
 

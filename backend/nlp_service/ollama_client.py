@@ -248,134 +248,87 @@ Please analyze these responses and provide insights."""
             "consensus_points": ["consensus1", "consensus2"],
             "dialogue_opportunities": ["opportunity1", "opportunity2"],
             "participant_sentiment": "overall sentiment",
-            "summary": "comprehensive summary of round {round_number} findings",
-            "round_progression": "how this round builds on previous rounds"
+            "summary": "comprehensive summary of findings for this round"
         }}"""
         
-        # Prepare response data for analysis
-        response_texts = []
-        for response in responses:
-            if isinstance(response, dict):
-                content = response.get('content', '')
-                inquiry_title = response.get('inquiry_title', '')
-                response_texts.append(f"Inquiry: {inquiry_title}\nResponse: {content}")
-            else:
-                response_texts.append(str(response))
-        
+        response_texts = [resp.get('content', '') for resp in responses]
         responses_text = "\n\n".join(response_texts)
         
         prompt = f"""Event: {event_data.get('title', 'Unknown Event')}
-Round: {round_number}
-Description: {event_data.get('description', 'No description')}
-
 Round {round_number} Responses:
 {responses_text}
 
-Please analyze these responses for round {round_number} and provide insights that show how the dialogue is progressing."""
+Please analyze these round-specific responses and provide insights."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            # Try to parse JSON from response
             if "{" in response and "}" in response:
                 start = response.find("{")
                 end = response.rfind("}") + 1
                 json_str = response[start:end]
-                parsed = json.loads(json_str)
-                # Ensure dialogue_opportunities and consensus_points are lists
-                dialogue_opportunities = parsed.get("dialogue_opportunities", [])
-                if not isinstance(dialogue_opportunities, list):
-                    dialogue_opportunities = [str(dialogue_opportunities)]
-                consensus_points = parsed.get("consensus_points", [])
-                if not isinstance(consensus_points, list):
-                    consensus_points = [str(consensus_points)]
-                # Combine for next round prompts
-                next_round_prompts = dialogue_opportunities + consensus_points
-                parsed["dialogue_opportunities"] = dialogue_opportunities
-                parsed["consensus_points"] = consensus_points
-                parsed["next_round_prompts"] = next_round_prompts
-                return parsed
+                return json.loads(json_str)
             else:
-                return {
-                    "key_themes": [],
-                    "common_concerns": [],
-                    "suggested_actions": [],
-                    "consensus_points": [],
-                    "dialogue_opportunities": [],
-                    "next_round_prompts": [],
-                    "participant_sentiment": "neutral",
-                    "summary": "Unable to parse insights"
-                }
+                return {"summary": "Unable to parse round analysis"}
         except Exception as e:
-            logger.error(f"Insight generation failed: {e}")
-            return {
-                "key_themes": [],
-                "common_concerns": [],
-                "suggested_actions": [],
-                "consensus_points": [],
-                "dialogue_opportunities": [],
-                "next_round_prompts": [],
-                "participant_sentiment": "neutral",
-                "summary": f"Error generating insights: {e}"
-            }
+            logger.error(f"Round insights generation failed: {e}")
+            return {"summary": f"Error in round insights generation: {e}"}
 
     def generate_next_inquiries(self, synthesis_summary: str, previous_inquiries: List[str]) -> List[Dict[str, str]]:
         """
-        Generate next round of inquiries based on the synthesis of the previous round.
-        
+        Generate new inquiries for the next round based on a synthesis of the previous one.
         Args:
-            synthesis_summary: The summary of the previous round's discussion.
-            previous_inquiries: A list of questions from all previous rounds to avoid repetition.
-            
+            synthesis_summary: A summary of the previous round's discussion.
+            previous_inquiries: A list of questions from the previous round.
         Returns:
-            A list of new inquiry dictionaries, each with 'title' and 'content'.
+            A list of new inquiries, each as a dictionary with 'title' and 'content'.
         """
-        system_prompt = """You are an expert facilitator for civic dialogues. Based on the summary of the last round, generate 3-5 new, concise, open-ended questions for the next round. These questions should:
-1.  Build upon the key themes and disagreements from the previous round.
-2.  Encourage deeper reflection and constructive dialogue.
-3.  Avoid repeating previous questions.
-4.  Be neutral and unbiased.
-Return a JSON response with a single key "inquiries" which is a list of objects, where each object has a "title" (the question) and a "content" (a brief, one-sentence description of the question's purpose).
+        system_prompt = """You are an expert dialogue facilitator. Your task is to generate 2-3 new, open-ended questions for the next round of a discussion. These questions should build upon the provided synthesis of the previous round, encouraging deeper reflection and moving the conversation forward. Avoid repeating previous questions.
 
-Example format:
+Return a JSON response with a single key "inquiries" which is a list of objects, where each object has "title" and "content" keys. Example:
 {
-  "inquiries": [
-    {
-      "title": "What specific trade-offs are you willing to make to address the housing crisis?",
-      "content": "This question asks participants to consider concrete compromises."
-    },
-    {
-      "title": "How might the concerns of the 'pro-development' group be addressed while respecting the 'neighborhood character' group's values?",
-      "content": "This question encourages participants to find common ground between opposing views."
-    }
-  ]
-}"""
-        
-        previous_inquiries_text = "\\n".join(f"- {q}" for q in previous_inquiries)
-        prompt = f"""Previous Round Synthesis:
+    "inquiries": [
+        {
+            "title": "Exploring Solutions",
+            "content": "Based on the identified challenges, what potential solutions or new approaches could we explore as a group?"
+        },
+        {
+            "title": "Uncovering Assumptions",
+            "content": "What underlying assumptions might be shaping the different perspectives we've heard so far?"
+        }
+    ]
+}
+"""
+        previous_inquiries_text = "\n".join(previous_inquiries)
+        prompt = f"""Given the following synthesis of our last round of discussion:
+---
 {synthesis_summary}
-
-Previously Asked Questions (Do not repeat these):
+---
+And keeping in mind the previous questions that have already been asked:
+---
 {previous_inquiries_text}
+---
+Please generate the next set of inquiries."""
 
-Generate the next set of inquiries."""
-        
         try:
             response_str = self.generate_response(prompt, system_prompt)
             if "{" in response_str and "}" in response_str:
                 start = response_str.find("{")
                 end = response_str.rfind("}") + 1
                 json_str = response_str[start:end]
-                parsed_response = json.loads(json_str)
-                # Basic validation
-                if "inquiries" in parsed_response and isinstance(parsed_response["inquiries"], list):
-                    return parsed_response["inquiries"]
-            
-            logger.warning("Failed to parse inquiries from LLM response, returning default.")
-            return [{"title": "What are your reflections on the previous round's summary?", "content": "A general question to continue the dialogue."}]
-
+                parsed_json = json.loads(json_str)
+                # Ensure the response is a list of dicts with the correct keys
+                inquiries = parsed_json.get("inquiries", [])
+                if isinstance(inquiries, list) and all("title" in i and "content" in i for i in inquiries):
+                    return inquiries
+                else:
+                    logger.warning(f"Ollama returned malformed inquiries: {inquiries}")
+                    return []
+            else:
+                logger.warning(f"Ollama did not return valid JSON for inquiries: {response_str}")
+                return []
         except Exception as e:
             logger.error(f"Failed to generate next inquiries: {e}")
-            return [{"title": "What are your reflections on the previous round's summary?", "content": "A general question to continue the dialogue."}]
+            return []
 
     def check_health(self) -> Dict[str, Any]:
         """
@@ -426,8 +379,13 @@ Generate the next set of inquiries."""
                 start = response.find("{")
                 end = response.rfind("}") + 1
                 json_str = response[start:end]
-                return json.loads(json_str)
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Keyword extraction failed to parse JSON: {e}. Response: {response_str}")
+                    return {"keywords": []}
             else:
+                logger.warning(f"Ollama did not return valid JSON for keywords: {response_str}")
                 return {"keywords": []}
         except Exception as e:
             logger.error(f"Keyword extraction failed: {e}")

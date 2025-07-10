@@ -191,44 +191,54 @@ const EventDetails: React.FC<EventDetailsProps> = ({
     return `${baseUrl}/results/${eventId}`;
   };
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      setError(null);
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
 
-      // 1. Fetch event details first
-      const eventResponse = await apiService.getEvent(eventId);
+    // 1. Fetch event details first
+    const eventResponse = await apiService.getEvent(eventId);
 
-      if (eventResponse.error) {
-        // If event not found or other error, stop here and set error state
-        setError(eventResponse.error);
-        setLoading(false);
-        return;
-      }
-
-      setEvent(eventResponse.data);
-
-      // 2. If event details are successfully fetched, fetch analysis and round state
-      setAnalysisLoading(true);
-      const analysisResponse = await apiService.getEventSummary(eventId); // Switched to a more appropriate summary endpoint
-      if (analysisResponse.data) {
-        setAnalysis(analysisResponse.data);
-      }
-      // Don't set a primary error if only analysis fails, but we could show a secondary indicator
-      if (analysisResponse.error) {
-        console.warn("Could not load event analysis:", analysisResponse.error);
-      }
-      setAnalysisLoading(false);
-
-      if (userRole === 'admin') {
-        await fetchRoundState();
-      }
-
+    if (eventResponse.error) {
+      // If event not found or other error, stop here and set error state
+      setError(eventResponse.error);
       setLoading(false);
-    };
+      return;
+    }
 
+    setEvent(eventResponse.data);
+
+    // 2. If event details are successfully fetched, fetch analysis and round state
+    setAnalysisLoading(true);
+    const analysisResponse = await apiService.getEventSummary(eventId); // Switched to a more appropriate summary endpoint
+    if (analysisResponse.data) {
+      setAnalysis(analysisResponse.data);
+    }
+    // Don't set a primary error if only analysis fails, but we could show a secondary indicator
+    if (analysisResponse.error) {
+      console.warn("Could not load event analysis:", analysisResponse.error);
+    }
+    setAnalysisLoading(false);
+
+    if (userRole === 'admin') {
+      await fetchRoundState();
+    }
+
+    setLoading(false);
+  };
+  
+  useEffect(() => {
     fetchAllData();
   }, [eventId, userRole]);
+
+  if (userRole === 'admin' && roundState && roundState.status === 'admin_review') {
+    return (
+      <DialogueModeration 
+        eventId={eventId}
+        roundNumber={roundState.current_round}
+        onApprovalSuccess={fetchAllData}
+      />
+    );
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -379,7 +389,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
         
         {userRole === 'admin' && roundState?.status === 'admin_review' && (
           <div className="moderation-section">
-            <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} />
+            <DialogueModeration eventId={eventId} roundNumber={roundState.current_round} onApprovalSuccess={fetchAllData} />
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import Notification from './Notification';
 
 type NotificationType = 'success' | 'error' | 'info';
@@ -25,12 +25,12 @@ export const useNotification = () => {
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notification, setNotification] = useState<NotificationState | null>(null);
 
-  const showNotification = (message: string, type: NotificationType) => {
+  const showNotification = useCallback((message: string, type: NotificationType) => {
     setNotification({ message, type });
     setTimeout(() => {
       setNotification(null);
     }, 5000); // Auto-hide after 5 seconds
-  };
+  }, []);
 
   return (
     <NotificationContext.Provider value={{ showNotification }}>

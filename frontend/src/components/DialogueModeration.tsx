@@ -1,112 +1,201 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import './DialogueModeration.css';
+import LoadingSpinner from './common/LoadingSpinner';
+import { useNotification } from './common/NotificationProvider';
+
+interface Prompt {
+  title: string;
+  content: string;
+}
+
+interface SynthesisReview {
+  id: string;
+  event_id: string;
+  round_number: number;
+  status: string;
+  summary: string;
+  next_round_prompts: Prompt[];
+  created_at: string;
+  updated_at: string | null;
+}
 
 interface DialogueModerationProps {
   eventId: string;
   roundNumber: number;
+  onApprovalSuccess: () => void;
 }
 
-const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundNumber }) => {
-  const [synthesis, setSynthesis] = useState<any>(null);
-  const [prompts, setPrompts] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundNumber, onApprovalSuccess }) => {
+  const [synthesis, setSynthesis] = useState<SynthesisReview | null>(null);
+  const [editablePrompts, setEditablePrompts] = useState<Prompt[]>([]);
+  const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
-
-  const fetchSynthesis = async () => {
-    setLoading(true);
-    try {
-      const response = await apiService.getSynthesisForReview(eventId, roundNumber);
-      if (response.data) {
-        setSynthesis(response.data);
-        setPrompts(JSON.stringify(response.data.next_round_prompts, null, 2));
-      } else {
-        setError(response.error || 'Failed to load synthesis for review.');
-      }
-    } catch (err) {
-      setError('An error occurred while fetching the synthesis for review.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { showNotification } = useNotification();
 
   useEffect(() => {
-    fetchSynthesis();
-  }, [eventId, roundNumber]);
+    const fetchSynthesis = async () => {
+      setIsLoading(true);
+      try {
+        const response = await (apiService as any).getSynthesisForReview(eventId, roundNumber);
+        if (response.data) {
+          const synthesisReview = response.data;
+          setSynthesis(synthesisReview);
+          // Ensure prompts are always in the correct format
+          const prompts = (synthesisReview.next_round_prompts || []).map((p: any) => 
+            typeof p === 'string' ? { title: 'Generated Prompt', content: p } : p
+          );
+          setEditablePrompts(prompts);
+          setError(null);
+        } else {
+          const errorMsg = (typeof response.error === 'object' ? JSON.stringify(response.error) : response.error) || `Failed to fetch synthesis for round ${roundNumber}.`;
+          setError(errorMsg);
+          showNotification(errorMsg, 'error');
+        }
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.detail || err.message || 'An unexpected error occurred.';
+        setError(errorMessage);
+        showNotification(errorMessage, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleSaveChanges = async () => {
+    fetchSynthesis();
+  }, [eventId, roundNumber, showNotification]);
+
+  const handlePromptChange = (index: number, value: string) => {
+    const newPrompts = [...editablePrompts];
+    newPrompts[index] = { ...newPrompts[index], content: value };
+    setEditablePrompts(newPrompts);
+  };
+
+  const handleUpdateSynthesis = async (): Promise<boolean> => {
+    if (!synthesis) return false;
     setIsSaving(true);
     try {
-      const parsedPrompts = JSON.parse(prompts);
-      await apiService.updateSynthesis(synthesis.id, { next_round_prompts: parsedPrompts });
-      alert('Changes saved successfully!');
-    } catch (err) {
-      alert('Failed to save changes. Please check if the JSON format is correct.');
-      console.error(err);
+      const response = await (apiService as any).updateSynthesis(synthesis.id, { next_round_prompts: editablePrompts });
+      if (response.data) {
+        showNotification('Draft saved successfully!', 'success');
+        setEditingPromptIndex(null);
+        setError(null);
+        return true;
+      } else {
+        const errorMsg = (typeof response.error === 'object' ? JSON.stringify(response.error) : response.error) || 'Failed to save draft.';
+        setError(errorMsg);
+        showNotification(errorMsg, 'error');
+        return false;
+      }
+    } catch (err: any) {
+        let errorMessage = err.message || 'An unexpected error occurred.';
+        if (err.response?.data?.detail) {
+            errorMessage = typeof err.response.data.detail === 'object' 
+                ? JSON.stringify(err.response.data.detail) 
+                : err.response.data.detail;
+        }
+        setError(errorMessage);
+        showNotification(errorMessage, 'error');
+        return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleApprove = async () => {
+  const handleApproveSynthesis = async () => {
+    if (!synthesis) return;
     setIsApproving(true);
-    if (window.confirm('Are you sure you want to approve these prompts and start the next round? This action cannot be undone.')) {
-      try {
-        await apiService.approveSynthesis(synthesis.id);
-        alert('Round approved! The next round has started.');
-        // Optionally, trigger a refresh of the event details page
-        window.location.reload();
-      } catch (err) {
-        alert('Failed to approve the round.');
-        console.error(err);
-      }
+    
+    const updateSuccess = await handleUpdateSynthesis();
+    if (!updateSuccess) {
+      setIsApproving(false);
+      showNotification('Could not approve because saving failed. Please resolve errors and try again.', 'error');
+      return;
     }
-    setIsApproving(false);
+
+    try {
+      const response = await (apiService as any).approveSynthesis(synthesis.id);
+      if (response.data) {
+        showNotification('Synthesis approved! Starting next round.', 'success');
+        setTimeout(onApprovalSuccess, 2000);
+      } else {
+        const errorMsg = (typeof response.error === 'object' ? JSON.stringify(response.error) : response.error) || 'Failed to approve synthesis.';
+        setError(errorMsg);
+        showNotification(errorMsg, 'error');
+      }
+    } catch (err: any) {
+        let errorMessage = err.message || 'An unexpected error occurred.';
+        if (err.response?.data?.detail) {
+            errorMessage = typeof err.response.data.detail === 'object' 
+                ? JSON.stringify(err.response.data.detail) 
+                : err.response.data.detail;
+        }
+        setError(errorMessage);
+        showNotification(errorMessage, 'error');
+    } finally {
+      setIsApproving(false);
+    }
   };
 
-  if (loading) {
-    return <div>Loading moderation panel...</div>;
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
-  if (error) {
-    return <div className="error-message">{error}</div>;
+  if (error && !synthesis) {
+    return <div className="dialogue-moderation-error">Error: {error}</div>;
   }
 
   if (!synthesis) {
-    return <div>No synthesis available for review for this round.</div>;
+    return <div className="dialogue-moderation-container">No synthesis available for review for this round.</div>;
   }
 
   return (
-    <div className="dialogue-moderation-panel">
-      <h3>Review & Approve Next Round Prompts</h3>
-      <p>
-        Here you can review the AI-generated prompts for the next round. You can edit the JSON directly below and save your changes. 
-        Once you are satisfied, approve the prompts to start the next round of dialogue for all participants.
-      </p>
+    <div className="dialogue-moderation-container">
+      <h3>Review AI Synthesis for Round {synthesis.round_number}</h3>
+      <p><strong>Summary of Previous Round:</strong></p>
+      <div className="synthesis-summary">
+        {synthesis.summary}
+      </div>
+
+      <h4>Proposed Prompts for Next Round:</h4>
+      <p>Review, edit, and approve the AI-generated prompts for the next round of dialogue.</p>
+      {error && <div className="dialogue-moderation-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      <div className="prompt-list">
+        {editablePrompts.map((prompt, index) => (
+          <div key={index} className="prompt-item">
+            <h5 className="prompt-title">{prompt.title}</h5>
+            {editingPromptIndex === index ? (
+              <textarea
+                value={prompt.content}
+                onChange={(e) => handlePromptChange(index, e.target.value)}
+                className="prompt-textarea"
+                rows={4}
+              />
+            ) : (
+              <p className="prompt-text">{prompt.content}</p>
+            )}
+            <div className="prompt-actions">
+              {editingPromptIndex === index ? (
+                <button onClick={handleUpdateSynthesis} className="prompt-button save" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              ) : (
+                <button onClick={() => setEditingPromptIndex(index)} className="prompt-button edit">
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
       
-      <div className="synthesis-content">
-        <h4>AI Synthesis Summary</h4>
-        <p>{synthesis.summary || synthesis.content}</p>
-      </div>
-
-      <div className="prompts-editor">
-        <h4>Next Round Prompts (JSON)</h4>
-        <textarea 
-          value={prompts}
-          onChange={(e) => setPrompts(e.target.value)}
-          rows={15}
-        />
-      </div>
-
       <div className="moderation-actions">
-        <button onClick={handleSaveChanges} disabled={isSaving || isApproving}>
-          {isSaving ? 'Saving...' : 'Save Changes'}
+        <button onClick={handleApproveSynthesis} disabled={isApproving || editingPromptIndex !== null} className="approve-button">
+          {isApproving ? 'Approving...' : `Approve & Start Round ${synthesis.round_number + 1}`}
         </button>
-        <button onClick={handleApprove} disabled={isSaving || isApproving} className="approve-button">
-          {isApproving ? 'Approving...' : 'Approve & Start Next Round'}
-        </button>
+        {editingPromptIndex !== null && <p className="save-prompt-notice">Please save your changes before approving.</p>}
       </div>
     </div>
   );

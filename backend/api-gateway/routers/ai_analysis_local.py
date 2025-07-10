@@ -126,7 +126,7 @@ class ClusterRequest(BaseModel):
     num_clusters: int = 3
 
 class SynthesisUpdateRequest(BaseModel):
-    next_round_prompts: Dict[str, Any]
+    next_round_prompts: List[Dict[str, Any]]
 
 class SynthesisResponse(BaseModel):
     id: str
@@ -135,7 +135,7 @@ class SynthesisResponse(BaseModel):
     title: Optional[str] = None
     content: str
     summary: Optional[str] = None
-    next_round_prompts: Optional[Dict[str, Any]] = None
+    next_round_prompts: Optional[List[Dict[str, Any]]] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -295,8 +295,8 @@ async def get_synthesis_for_review(
     return synthesis
 
 
-@router.put("/ai/synthesis-review/{synthesis_id}")
-async def update_synthesis(
+@router.put("/ai/synthesis-review/{synthesis_id}", response_model=SynthesisResponse)
+async def update_synthesis_review(
     synthesis_id: str,
     request: SynthesisUpdateRequest,
     db: Session = Depends(get_local_db)
@@ -318,87 +318,92 @@ async def update_synthesis(
     synthesis.updated_at = datetime.now(timezone.utc)
     
     db.commit()
+    db.refresh(synthesis)
 
-    return {"message": "Synthesis updated successfully."}
+    return synthesis
 
 
-@router.post("/ai/synthesis-review/{synthesis_id}/approve")
-async def approve_synthesis(
+@router.post("/ai/synthesis-review/{synthesis_id}/approve", response_model=SynthesisResponse)
+async def approve_synthesis_review(
     synthesis_id: str,
-    db: Session = Depends(get_local_db)
+    db: Session = Depends(get_local_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Approves a synthesis, completes the current round, and starts the next round.
+    Approve a synthesis review, making the prompts available for the next round.
     """
-    try:
-        synthesis_uuid = uuid.UUID(synthesis_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid synthesis ID format.")
-        
-    synthesis = db.query(Synthesis).filter(Synthesis.id == synthesis_uuid).first()
+    # Verify the user is the event organizer
+    synthesis = db.query(Synthesis).options(
+        joinedload(Synthesis.event)
+    ).filter(Synthesis.id == synthesis_id).first()
+
     if not synthesis:
-        raise HTTPException(status_code=404, detail="Synthesis not found.")
-
-    event = db.query(Event).options(joinedload(Event.rounds)).filter(Event.id == synthesis.event_id).first()
+        raise HTTPException(status_code=404, detail="Synthesis review not found")
+    
+    event = synthesis.event
     if not event:
-        raise HTTPException(status_code=404, detail="Associated event not found.")
+        # This case should ideally not happen due to database constraints
+        raise HTTPException(status_code=500, detail="Associated event not found for synthesis")
 
-    current_round_number = synthesis.round_number
-    current_round = db.query(EventRound).filter(
-        EventRound.event_id == event.id,
-        EventRound.round_number == current_round_number
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the event organizer can approve the synthesis")
+
+    # 1. Update the synthesis status to "approved"
+    synthesis.status = "approved"
+    synthesis.updated_at = datetime.now(timezone.utc)
+
+    # 2. Create inquiries for the NEXT round
+    next_round_number = synthesis.round_number + 1
+    new_inquiries = []
+    for i, prompt in enumerate(synthesis.next_round_prompts):
+        new_inquiry = Inquiry(
+            id=uuid.uuid4(),
+            event_id=synthesis.event_id,
+            question_text=prompt.get('content', 'Untitled Prompt'),
+            description=prompt.get('title', ''),
+            order_index=i,
+            round_number=next_round_number,
+            response_type='text',
+            is_required=True,
+        )
+        new_inquiries.append(new_inquiry)
+    db.add_all(new_inquiries)
+
+    # 3. Find or create the NEXT round and set its status to 'open'
+    next_event_round = db.query(EventRound).filter(
+        EventRound.event_id == synthesis.event_id,
+        EventRound.round_number == next_round_number
     ).first()
 
-    if not current_round:
-        raise HTTPException(status_code=404, detail="Current event round not found.")
-
-    if current_round.status != EventRoundStatus.ADMIN_REVIEW:
-        raise HTTPException(status_code=400, detail=f"Round cannot be approved. Current state: {current_round.status.value}")
-
-    try:
-        # 1. Mark current round as completed
-        current_round.status = EventRoundStatus.COMPLETED
-        current_round.ended_at = datetime.now(timezone.utc)
-        
-        # 2. Advance event to the next round
-        next_round_number = event.current_round + 1
-        event.current_round = next_round_number
-        
-        # 3. Create new inquiries for the next round from the approved prompts
-        prompts_data = synthesis.next_round_prompts.get('prompts') if synthesis.next_round_prompts else []
-        if not isinstance(prompts_data, list):
-            raise HTTPException(status_code=400, detail="Invalid or missing prompts list for the next round.")
-
-        for i, prompt in enumerate(prompts_data):
-            new_inquiry = Inquiry(
-                event_id=event.id,
-                question_text=prompt.get('title', f'Round {next_round_number} Question {i+1}'),
-                description=prompt.get('description', ''),
-                context=prompt.get('context', ''),
-                order_index=i,
-                response_type='text',
-                round_number=next_round_number
-            )
-            db.add(new_inquiry)
-        
-        # 4. Create the new round record
-        new_round = EventRound(
-            event_id=event.id,
+    if not next_event_round:
+        next_event_round = EventRound(
+            event_id=synthesis.event_id,
             round_number=next_round_number,
             status=EventRoundStatus.WAITING_FOR_RESPONSES,
-            title=f"Round {next_round_number}",
-            started_at=datetime.now(timezone.utc)
         )
-        db.add(new_round)
-        
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to approve round: {str(e)}")
+        db.add(next_event_round)
+    else:
+        next_event_round.status = EventRoundStatus.WAITING_FOR_RESPONSES
 
-    return {"message": f"Round {current_round_number} approved. Round {next_round_number} has started."}
+    # 4. Mark current round as completed
+    current_round = db.query(EventRound).filter(
+        EventRound.event_id == synthesis.event_id,
+        EventRound.round_number == synthesis.round_number
+    ).first()
+
+    if current_round:
+        current_round.status = EventRoundStatus.COMPLETED
+
+    # 5. Update the event's main round counter
+    event.current_round = next_round_number
+
+    db.commit()
+    db.refresh(synthesis)
+    db.refresh(next_event_round)
+    if current_round:
+        db.refresh(current_round)
+
+    return synthesis
 
 
 @router.post("/ai/analyze-event/{event_id}/round/{round_number}")
