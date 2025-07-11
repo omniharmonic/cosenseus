@@ -104,11 +104,12 @@ const ConsensusGraph: React.FC<ConsensusGraphProps> = ({ eventId }) => {
             autosize: true,
             margin: { l: 50, r: 50, t: 50, b: 100 },
             title: 'Agreement by Cluster',
-            xaxis: { title: 'Cluster' },
-            yaxis: { title: 'Agreement Score', range: [0, 1] },
+            xaxis: { title: 'Cluster', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
+            yaxis: { title: 'Agreement Score', range: [0, 1], tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
-            font: { color: '#F2F2F7' }
+            font: { color: '#FFFFFF' },
+            titlefont: { color: '#FFFFFF' }
           }}
           config={{ 
             responsive: true,

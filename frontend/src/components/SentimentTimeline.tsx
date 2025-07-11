@@ -108,15 +108,18 @@ const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ eventId }) => {
           autosize: true,
           margin: { l: 50, r: 50, t: 50, b: 50 },
           title: 'Sentiment Over Time',
-          xaxis: { title: 'Time' },
+          xaxis: { title: 'Time', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
           yaxis: {
             title: 'Sentiment',
             tickvals: [-1, 0, 1],
             ticktext: ['Negative', 'Neutral', 'Positive'],
+            tickfont: { color: '#FFFFFF' },
+            titlefont: { color: '#FFFFFF' }
           },
           paper_bgcolor: 'transparent',
           plot_bgcolor: 'transparent',
-          font: { color: '#F2F2F7' }
+          font: { color: '#FFFFFF' },
+          titlefont: { color: '#FFFFFF' }
         }}
         config={{ 
           responsive: true,

@@ -124,12 +124,13 @@ const OpinionClusterMap: React.FC<OpinionClusterMapProps> = ({ eventId, roundNum
             autosize: true,
             margin: { l: 50, r: 50, t: 50, b: 50 },
             title: 'Participant Opinion Clusters',
-            xaxis: { title: 'Principal Component 1' },
-            yaxis: { title: 'Principal Component 2' },
+            xaxis: { title: 'Principal Component 1', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
+            yaxis: { title: 'Principal Component 2', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
             hovermode: 'closest',
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
-            font: { color: '#F2F2F7' }
+            font: { color: '#FFFFFF' },
+            titlefont: { color: '#FFFFFF' }
           }}
           config={{ 
             responsive: true,

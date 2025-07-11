@@ -113,17 +113,19 @@ const ResponseClusterMap: React.FC<ResponseClusterMapProps> = ({ eventId }) => {
             autosize: true,
             margin: { l: 50, r: 50, t: 50, b: 100 },
             title: 'Clusters of Participant Responses',
-            xaxis: { title: 'Dimension 1' },
-            yaxis: { title: 'Dimension 2' },
+            xaxis: { title: 'Dimension 1', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
+            yaxis: { title: 'Dimension 2', tickfont: { color: '#FFFFFF' }, titlefont: { color: '#FFFFFF' } },
             legend: { 
               orientation: 'h',
               x: 0.5,
               xanchor: 'center',
-              y: -0.2
+              y: -0.2,
+              font: { color: '#FFFFFF' }
             },
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
-            font: { color: '#F2F2F7' }
+            font: { color: '#FFFFFF' },
+            titlefont: { color: '#FFFFFF' }
           }}
           config={{ 
             responsive: true,

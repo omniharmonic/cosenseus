@@ -247,3 +247,92 @@ textarea {
   min-height: 120px;
   resize: vertical;
 } 
+
+/*
+---
+Visualization Components
+---
+*/
+.visualization-container {
+  background: var(--card-background-color-dark);
+  border: 1px solid var(--border-color-dark);
+  border-radius: var(--border-radius-large);
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.visualization-content {
+  width: 100%;
+  height: 400px; /* Fixed height for Plotly components */
+  min-height: 400px;
+  position: relative;
+  background: var(--background-color-dark);
+  border-radius: var(--border-radius-medium);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-unit-3) var(--spacing-unit-4);
+  border-bottom: 1px solid var(--border-color-dark);
+  background: var(--secondary-color);
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-color-primary-dark);
+}
+
+.loading-state, .error-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  text-align: center;
+  padding: var(--spacing-unit-4);
+}
+
+.loading-state {
+  color: var(--text-color-secondary-dark);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color-dark);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-unit-2);
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.error-state {
+  color: var(--error-color);
+}
+
+.error-text {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary-dark);
+  margin-top: var(--spacing-unit);
+}
+
+.empty-state {
+  color: var(--text-color-secondary-dark);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 

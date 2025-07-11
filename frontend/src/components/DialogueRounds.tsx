@@ -72,7 +72,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     '| Inquiries:', inquiries?.length
   );
 
-  // Poll round state
+  // Poll round state - SIMPLIFIED VERSION
   const fetchRoundState = async () => {
     try {
       console.log('[DialogueRounds fetchRoundState] Fetching state for event:', eventId);
@@ -84,28 +84,23 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
       console.log('[DialogueRounds fetchRoundState] API Response:', data);
       if (data && typeof data.current_round !== 'undefined') {
         setCurrentRound(data.current_round);
-        // The backend uses 'waiting_for_responses' for the active/open state.
         setRoundStatus(data.status);
-        // Reset error tracking on success
+        setError(null); // Clear errors on successful fetch
         setConsecutiveErrors(0);
-        setPollInterval(10000); // Reset to normal interval
       }
     } catch (err) {
       console.error('[DialogueRounds fetchRoundState] Error:', err);
-      setError('Failed to fetch round state.');
-      // Implement exponential backoff
       const newErrorCount = consecutiveErrors + 1;
       setConsecutiveErrors(newErrorCount);
       
       if (newErrorCount >= 3) {
-        // Stop polling after 3 consecutive errors
+        setError('Connection issues detected. Please refresh the page to continue.');
         console.log('[DialogueRounds] Stopping round state polling due to consecutive errors');
-        setError('Connection issues detected. Please refresh the page.');
         return;
+      } else {
+        // Only set error for user if it's not just a temporary network issue
+        setError('Checking round status...');
       }
-      
-      // Exponential backoff: 10s, 20s, 30s
-      setPollInterval(Math.min(10000 * newErrorCount, 30000));
     }
   };
 
@@ -126,30 +121,30 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     
     const saved = localStorage.getItem(newDialogueKey);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      setCurrentRound(parsed.currentRound || 1);
-      setResponses(parsed.responses || {});
+      try {
+        const parsed = JSON.parse(saved);
+        setCurrentRound(parsed.currentRound || 1);
+        setResponses(parsed.responses || {});
+      } catch (err) {
+        console.error('Error parsing saved dialogue data:', err);
+        // Clear corrupted data
+        localStorage.removeItem(newDialogueKey);
+      }
     }
     
     fetchRoundState(); // Initial fetch
     
-    let intervalId: NodeJS.Timeout;
-    const startPolling = () => {
-      intervalId = setInterval(() => {
-        if (consecutiveErrors < 3) {
-          fetchRoundState();
-        }
-      }, pollInterval);
-    };
-    
-    startPolling();
+    // Simplified polling - consistent 10 second interval
+    const intervalId = setInterval(() => {
+      if (consecutiveErrors < 3) {
+        fetchRoundState();
+      }
+    }, 10000);
     
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      clearInterval(intervalId);
     };
-  }, [eventId, pollInterval, consecutiveErrors]);
+  }, [eventId]);
 
 
   const fetchEventData = async () => {
@@ -391,15 +386,31 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     );
   }
 
-  if (error || !eventDetails) {
+  if (error && consecutiveErrors >= 3) {
     return (
       <div className="dialogue-rounds-container">
         <div className="error-state">
-          <h3>Error Loading Dialogue</h3>
-          <p>{typeof error === 'string' ? error : JSON.stringify(error, null, 2) || 'Event not found'}</p>
-          <button className="btn btn-primary" onClick={onBack}>
-            Back to Event Details
-          </button>
+          <h3>Connection Issue</h3>
+          <p>Unable to connect to the dialogue system. Please check your internet connection and refresh the page.</p>
+          <div className="rounds-actions">
+            <button className="btn btn-secondary" onClick={() => window.location.reload()}>
+              Refresh Page
+            </button>
+            <button className="btn btn-primary" onClick={onBack}>
+              Back to Event Details
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!eventDetails) {
+    return (
+      <div className="dialogue-rounds-container">
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading event details...</p>
         </div>
       </div>
     );
@@ -428,6 +439,15 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
             {renderProgress()}
           </div>
         </div>
+        
+        {/* Show temporary error/loading state */}
+        {error && consecutiveErrors < 3 && (
+          <div className="info-banner">
+            <div className="loading-spinner small"></div>
+            <span>{error}</span>
+          </div>
+        )}
+        
         <div className="dialogue-content">
           <div className="banner">
             <p>{getBanner()}</p>
