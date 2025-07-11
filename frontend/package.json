@@ -1,7 +1,7 @@
 {
   "name": "cosenseus-frontend",
   "version": "0.1.0",
-  "description": "cosenseus - AI-powered civic dialogue for real consensus",
+  "description": "cosense.us - AI-powered civic dialogue for real consensus",
   "private": true,
   "proxy": "http://localhost:8000",
   "dependencies": {
