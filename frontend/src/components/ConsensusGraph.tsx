@@ -40,44 +40,96 @@ const ConsensusGraph: React.FC<ConsensusGraphProps> = ({ eventId }) => {
     fetchConsensus();
   }, [eventId]);
 
-  if (loading) return <div>Loading consensus graph...</div>;
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (!clusters || clusters.length === 0) return <div>No consensus data found.</div>;
+  if (loading) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📈 Consensus Graph</h3>
+        </div>
+        <div className="loading-state">
+          <div className="loading-spinner small"></div>
+          <p>Loading consensus graph...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📈 Consensus Graph</h3>
+        </div>
+        <div className="error-state">
+          <p>⚠️ Failed to load consensus graph</p>
+          <p className="error-text">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!clusters || clusters.length === 0) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>📈 Consensus Graph</h3>
+        </div>
+        <div className="empty-state">
+          <p>No consensus data available yet.</p>
+          <p>Consensus analysis will appear as participants submit responses.</p>
+        </div>
+      </div>
+    );
+  }
 
   const x = clusters.map(c => c.cluster_label);
   const y = clusters.map(c => c.agreement_score);
   const text = clusters.map(c => `${c.responses.length} responses`);
 
   return (
-    <div style={{ width: '100%', minHeight: 300, textAlign: 'center', padding: 16 }}>
-      <h3>Consensus Graph</h3>
-      <Plot
-        data={[{
-          x,
-          y,
-          text,
-          type: 'bar',
-          marker: { color: '#4a90e2' },
-        }]}
-        layout={{
-          autosize: true,
-          margin: { l: 50, r: 50, t: 50, b: 50 },
-          title: 'Agreement by Cluster',
-          xaxis: { title: 'Cluster' },
-          yaxis: { title: 'Agreement Score', range: [0, 1] },
-          paper_bgcolor: 'transparent',
-          plot_bgcolor: 'transparent',
-          font: { color: '#F2F2F7' }
-        }}
-        config={{ 
-          responsive: true,
-          displayModeBar: false,
-          staticPlot: false
-        }}
-        useResizeHandler={true}
-        style={{ width: '100%', height: '100%' }}
-      />
-      {summary && <div style={{ marginTop: 12, fontStyle: 'italic', color: '#8E8E93' }}>{summary}</div>}
+    <div className="visualization-container">
+      <div className="card-header">
+        <h3>📈 Consensus Graph</h3>
+      </div>
+      <div className="visualization-content">
+        <Plot
+          data={[{
+            x,
+            y,
+            text,
+            type: 'bar',
+            marker: { color: '#4a90e2' },
+          }]}
+          layout={{
+            autosize: true,
+            margin: { l: 50, r: 50, t: 50, b: 100 },
+            title: 'Agreement by Cluster',
+            xaxis: { title: 'Cluster' },
+            yaxis: { title: 'Agreement Score', range: [0, 1] },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#F2F2F7' }
+          }}
+          config={{ 
+            responsive: true,
+            displayModeBar: false,
+            staticPlot: false
+          }}
+          useResizeHandler={true}
+          style={{ width: '100%', height: '100%' }}
+        />
+        {summary && (
+          <div style={{ 
+            marginTop: '12px', 
+            fontStyle: 'italic', 
+            color: '#8E8E93',
+            padding: '0 16px',
+            textAlign: 'center'
+          }}>
+            {summary}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

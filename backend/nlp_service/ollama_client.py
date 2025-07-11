@@ -120,9 +120,27 @@ class OllamaClient:
         """
         if not responses:
             return {"clusters": [], "summary": "No responses to cluster"}
-        system_prompt = f"""You are a clustering expert. Group the given responses into {num_clusters} clusters based on similarity of ideas and themes. Return a JSON response with the following structure:\n{{\n    \"clusters\": [\n        {{\n            \"id\": \"cluster_1\",\n            \"theme\": \"main theme of this cluster\",\n            \"responses\": [\"response1\", \"response2\"],\n            \"summary\": \"summary of this cluster's main points\"\n        }}\n    ],\n    \"overall_summary\": \"summary of all clusters\"\n}}"""
+        
+        system_prompt = f"""You are a clustering expert. Group the given responses into {num_clusters} clusters based on similarity of ideas and themes. 
+
+Return a JSON response with the following structure:
+{{
+    "clusters": [
+        {{
+            "id": "cluster_1",
+            "theme": "main theme of this cluster",
+            "response_indices": [1, 2],
+            "summary": "summary of this cluster's main points"
+        }}
+    ],
+    "overall_summary": "summary of all clusters"
+}}
+
+IMPORTANT: In the "response_indices" field, return the NUMBERS (1, 2, 3, etc.) corresponding to the numbered responses. Do not include the actual response text."""
+        
         responses_text = "\n".join([f"{i+1}. {response}" for i, response in enumerate(responses)])
         prompt = f"Cluster these responses:\n{responses_text}"
+        
         try:
             response = self.generate_response(prompt, system_prompt)
             # Try to parse JSON from response
@@ -131,21 +149,62 @@ class OllamaClient:
                 end = response.rfind("}") + 1
                 json_str = response[start:end]
                 parsed = json.loads(json_str)
+                
                 # Add 2D coordinates for each response in each cluster
                 import math
                 clusters = parsed.get("clusters", [])
                 total_clusters = len(clusters)
+                
                 for cidx, cluster in enumerate(clusters):
                     points = []
-                    n = len(cluster.get("responses", []))
-                    for ridx, resp_text in enumerate(cluster.get("responses", [])):
+                    # Try both 'response_indices' (new format) and 'responses' (fallback)
+                    cluster_indices = cluster.get("response_indices", cluster.get("responses", []))
+                    n = len(cluster_indices)
+                    
+                    for ridx, resp_index in enumerate(cluster_indices):
+                        # Convert response index to actual response text
+                        actual_text = None
+                        
+                        try:
+                            # Handle both string and int indices
+                            if isinstance(resp_index, (int, str)) and str(resp_index).isdigit():
+                                response_idx = int(resp_index) - 1  # Convert to 0-based index
+                                if 0 <= response_idx < len(responses):
+                                    actual_text = responses[response_idx]
+                            
+                            # If it's already text (fallback case), try to match it
+                            elif isinstance(resp_index, str) and len(resp_index) > 5:
+                                # Try to find which response it matches best
+                                for i, original_resp in enumerate(responses):
+                                    if (resp_index.lower() in original_resp.lower() or 
+                                        original_resp.lower().startswith(resp_index.lower()[:20])):
+                                        actual_text = original_resp
+                                        break
+                                        
+                        except (ValueError, TypeError):
+                            pass
+                        
+                        # Final fallback: use sequential assignment
+                        if actual_text is None:
+                            if ridx < len(responses):
+                                actual_text = responses[ridx]
+                            else:
+                                actual_text = f"Response text not available"
+                        
                         # Spread points in a circle per cluster
                         angle = 2 * math.pi * ridx / max(n, 1)
                         radius = 0.5 + 0.5 * cidx  # Different radius per cluster
                         x = radius * math.cos(angle)
                         y = radius * math.sin(angle)
-                        points.append({"x": x, "y": y, "text": resp_text})
+                        
+                        points.append({
+                            "x": x, 
+                            "y": y, 
+                            "text": actual_text
+                        })
+                    
                     cluster["points"] = points
+                
                 parsed["clusters"] = clusters
                 return parsed
             else:

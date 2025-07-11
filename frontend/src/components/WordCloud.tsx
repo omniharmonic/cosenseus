@@ -42,32 +42,86 @@ const WordCloud: React.FC<WordCloudProps> = ({ eventId }) => {
     fetchKeywords();
   }, [eventId]);
 
-  if (loading) return <div>Loading word cloud...</div>;
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (!keywords || keywords.length === 0) return <div>No keywords found.</div>;
+  if (loading) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>☁️ Word Cloud</h3>
+        </div>
+        <div className="loading-state">
+          <div className="loading-spinner small"></div>
+          <p>Loading word cloud...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>☁️ Word Cloud</h3>
+        </div>
+        <div className="error-state">
+          <p>⚠️ Failed to load word cloud</p>
+          <p className="error-text">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!keywords || keywords.length === 0) {
+    return (
+      <div className="visualization-container">
+        <div className="card-header">
+          <h3>☁️ Word Cloud</h3>
+        </div>
+        <div className="empty-state">
+          <p>No keywords available yet.</p>
+          <p>Word analysis will appear as participants submit responses.</p>
+        </div>
+      </div>
+    );
+  }
 
   const minFreq = Math.min(...keywords.map(k => k.frequency));
   const maxFreq = Math.max(...keywords.map(k => k.frequency));
 
   return (
-    <div style={{ width: '100%', minHeight: 200, textAlign: 'center', padding: 16 }}>
-      <h3>Word Cloud</h3>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-        {keywords.map((k, i) => (
-          <span
-            key={i}
-            style={{
-              fontSize: getFontSize(k.frequency, minFreq, maxFreq),
-              fontWeight: 600,
-              color: '#ffffff',
-              margin: 4,
-              lineHeight: 1.2,
-            }}
-            title={`Frequency: ${k.frequency}`}
-          >
-            {k.word}
-          </span>
-        ))}
+    <div className="visualization-container">
+      <div className="card-header">
+        <h3>☁️ Word Cloud</h3>
+      </div>
+      <div className="visualization-content">
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          justifyContent: 'center', 
+          gap: '8px',
+          padding: '16px',
+          minHeight: '200px',
+          alignItems: 'center'
+        }}>
+          {keywords.map((k, i) => (
+            <span
+              key={i}
+              style={{
+                fontSize: getFontSize(k.frequency, minFreq, maxFreq),
+                fontWeight: 600,
+                color: '#ffffff',
+                margin: 4,
+                lineHeight: 1.2,
+                transition: 'transform 0.2s ease',
+                cursor: 'default'
+              }}
+              title={`Frequency: ${k.frequency}`}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {k.word}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
