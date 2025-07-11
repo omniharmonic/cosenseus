@@ -70,6 +70,7 @@ class EventResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     created_by: str
+    organizer_id: str  # Add organizer_id field
     inquiries: List[InquiryResponse] = []
 
     class Config:
@@ -296,7 +297,8 @@ async def publish_event(
         allow_anonymous=event.allow_anonymous,
         created_at=event.created_at,
         updated_at=event.updated_at,
-        created_by=str(event.organizer_id),
+        created_by=event.organizer.display_name if event.organizer else "Unknown",
+        organizer_id=str(event.organizer_id),
         inquiries=[InquiryResponse.from_orm(i) for i in event.inquiries]
     )
 
@@ -564,6 +566,7 @@ async def create_event(
         created_at=event_with_inquiries.created_at,
         updated_at=event_with_inquiries.updated_at,
         created_by=event_with_inquiries.organizer.display_name,
+        organizer_id=str(event_with_inquiries.organizer_id),
         inquiries=[InquiryResponse.from_orm(i) for i in event_with_inquiries.inquiries]
     )
 
@@ -593,6 +596,7 @@ async def get_event(
         created_at=event.created_at,
         updated_at=event.updated_at,
         created_by=organizer_name,
+        organizer_id=str(event.organizer_id),
         inquiries=[inq for inq in event.inquiries]
     )
 
@@ -638,5 +642,6 @@ async def update_event(
         created_at=event.created_at,
         updated_at=event.updated_at,
         created_by=user.display_name,
+        organizer_id=str(event.organizer_id),
         inquiries=[InquiryResponse.model_validate(inq) for inq in event.inquiries]
     ) 

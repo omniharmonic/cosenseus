@@ -29,7 +29,7 @@ interface Event {
   is_public: boolean;
   created_at: string;
   inquiries: Inquiry[];
-  organizer_id?: string; // Added organizer_id to the interface
+  organizer_id: string; // This field is now required from backend
 }
 
 interface EventAnalysis {
@@ -48,7 +48,7 @@ interface EventAnalysis {
 
 interface EventDetailsProps {
   eventId: string;
-  userRole: 'admin' | 'user' | 'anonymous';
+  user: { id: string; role: 'admin' | 'user' | 'anonymous'; display_name: string; session_code: string; created_at: string } | null;
   onBack: () => void;
   onParticipate: () => void;
   onStartDialogue?: () => void;
@@ -63,7 +63,7 @@ interface RoundState {
 
 const EventDetails: React.FC<EventDetailsProps> = ({ 
   eventId, 
-  userRole, 
+  user, 
   onBack, 
   onParticipate,
   onStartDialogue,
@@ -82,42 +82,46 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // DEBUG: Log userRole and user data
+  // DEBUG: Log user and userRole data
   useEffect(() => {
     console.log('🔍 EventDetails Debug Info:');
-    console.log('- userRole prop:', userRole);
+    console.log('- user object:', user);
+    console.log('- user.role:', user?.role);
+    console.log('- user.id:', user?.id);
     console.log('- eventId:', eventId);
-    
-    // Get user data from localStorage for comparison
-    const sessionCode = localStorage.getItem('cosenseus_session_code');
-    console.log('- localStorage session code:', sessionCode);
-    
-    // Try to get current user context if available
-    try {
-      const userContext = JSON.parse(localStorage.getItem('cosenseus_user_data') || '{}');
-      console.log('- localStorage user data:', userContext);
-    } catch (e) {
-      console.log('- No user data in localStorage');
-    }
     
     // Additional debugging: check if event data exists and log organizer info
     if (event) {
       console.log('- Event organizer_id:', event.organizer_id || 'No organizer_id in event');
       console.log('- Event data:', event);
+      console.log('- Is current user organizer?', event.organizer_id === user?.id);
+      console.log('- Is current user admin?', user?.role === 'admin');
     }
-  }, [userRole, eventId, event]);
+  }, [user, eventId, event]);
 
   // Helper function to check if current user is admin/organizer
   const isCurrentUserAdmin = () => {
-    // Primary check: userRole prop
-    if (userRole === 'admin') {
-      console.log('✅ User is admin via userRole prop');
+    if (!user || !event) {
+      console.log('❌ No user or event data available');
+      return false;
+    }
+    
+    // Check 1: Global admin role
+    if (user.role === 'admin') {
+      console.log('✅ User is admin via global role');
       return true;
     }
     
-    // Fallback check: if userRole is not admin but we need to verify
-    // This could be a backup to check against the event organizer
-    console.log('❌ User is not admin via userRole prop:', userRole);
+    // Check 2: Event organizer
+    if (event.organizer_id && event.organizer_id === user.id) {
+      console.log('✅ User is event organizer');
+      return true;
+    }
+    
+    console.log('❌ User is neither admin nor organizer');
+    console.log('- User role:', user.role);
+    console.log('- User ID:', user.id);
+    console.log('- Event organizer_id:', event.organizer_id);
     return false;
   };
 
@@ -432,7 +436,7 @@ const EventDetails: React.FC<EventDetailsProps> = ({
             </button>
           )}
 
-          {event.status === 'active' && userRole !== 'admin' && (
+          {event.status === 'active' && user?.role !== 'admin' && (
             <button className="btn btn-primary" onClick={onParticipate}>
               Participate Now
             </button>

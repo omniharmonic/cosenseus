@@ -240,7 +240,7 @@ const EventDetailsRoute: React.FC = () => {
   console.log('🔍 EventDetailsRoute Debug:');
   console.log('- user object:', user);
   console.log('- user.role:', user?.role);
-  console.log('- userRole being passed to EventDetails:', user ? user.role : 'anonymous');
+  console.log('- user.id:', user?.id);
 
   const handleNavigateToParticipate = (eventId: string) => {
     navigate(`/participate/${eventId}`);
@@ -256,7 +256,7 @@ const EventDetailsRoute: React.FC = () => {
       <div className="dashboard-container">
         <EventDetails
           eventId={eventId}
-          userRole={user ? user.role : 'anonymous'}
+          user={user}
           onBack={() => navigate('/events')}
           onParticipate={() => navigate(`/participate/${eventId}`)}
           onStartDialogue={() => navigate(`/dialogue/${eventId}`)}

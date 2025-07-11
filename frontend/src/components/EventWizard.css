@@ -1,3 +1,4 @@
+/* Test comment to check if CSS changes trigger backend issues */
 .event-wizard {
   max-width: 800px;
   margin: var(--spacing-unit-5) auto;
@@ -42,8 +43,13 @@
   transition: all 0.3s ease;
   border: 1px solid var(--border-color-dark);
   position: relative;
-  min-width: 80px;
+  min-width: 150px; /* Increased from 120px to 150px for better content fit */
   text-align: center;
+  white-space: nowrap; /* Prevent text wrapping */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px; /* Fixed height for consistency */
 }
 
 .progress-step.active {
