@@ -1,6 +1,5 @@
 import requests
 import json
-import re
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
@@ -18,115 +17,7 @@ class OllamaClient:
         self.base_url = base_url
         self.model = model
         self.api_url = f"{base_url}/api"
-    
-    def _extract_json_from_response(self, response_text: str) -> Optional[Dict[str, Any]]:
-        """
-        Robustly extract JSON from Ollama response text that may contain extra text.
         
-        Args:
-            response_text: Raw response text from Ollama
-            
-        Returns:
-            Parsed JSON dict or None if extraction fails
-        """
-        if not response_text:
-            return None
-            
-        # Try multiple strategies to extract JSON
-        strategies = [
-            # Strategy 1: Find JSON between first { and last }
-            lambda text: self._extract_simple_json(text),
-            # Strategy 2: Find JSON using regex patterns
-            lambda text: self._extract_regex_json(text),
-            # Strategy 3: Try to clean and parse the response
-            lambda text: self._extract_cleaned_json(text)
-        ]
-        
-        for strategy in strategies:
-            try:
-                result = strategy(response_text)
-                if result is not None:
-                    return result
-            except Exception as e:
-                logger.debug(f"JSON extraction strategy failed: {e}")
-                continue
-                
-        logger.warning(f"All JSON extraction strategies failed for response: {response_text[:200]}...")
-        return None
-    
-    def _extract_simple_json(self, text: str) -> Optional[Dict[str, Any]]:
-        """Extract JSON using simple brace matching."""
-        if "{" not in text or "}" not in text:
-            return None
-            
-        start = text.find("{")
-        brace_count = 0
-        end = start
-        
-        for i in range(start, len(text)):
-            if text[i] == "{":
-                brace_count += 1
-            elif text[i] == "}":
-                brace_count -= 1
-                if brace_count == 0:
-                    end = i + 1
-                    break
-        
-        if brace_count == 0:
-            json_str = text[start:end]
-            return json.loads(json_str)
-        return None
-    
-    def _extract_regex_json(self, text: str) -> Optional[Dict[str, Any]]:
-        """Extract JSON using regex patterns."""
-        # Look for JSON-like patterns
-        json_patterns = [
-            r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',  # Simple nested JSON
-            r'\{.*?\}',  # Any content between braces
-        ]
-        
-        for pattern in json_patterns:
-            matches = re.findall(pattern, text, re.DOTALL)
-            for match in matches:
-                try:
-                    return json.loads(match)
-                except json.JSONDecodeError:
-                    continue
-        return None
-    
-    def _extract_cleaned_json(self, text: str) -> Optional[Dict[str, Any]]:
-        """Extract JSON by cleaning the response text."""
-        # Remove common prefixes/suffixes that Ollama might add
-        prefixes_to_remove = [
-            "Here's the JSON response:",
-            "Based on the analysis:",
-            "The JSON output is:",
-            "Here is the result:",
-            "Analysis result:",
-        ]
-        
-        cleaned = text.strip()
-        for prefix in prefixes_to_remove:
-            if cleaned.lower().startswith(prefix.lower()):
-                cleaned = cleaned[len(prefix):].strip()
-        
-        # Try to find and extract just the JSON part
-        if "{" in cleaned and "}" in cleaned:
-            start = cleaned.find("{")
-            end = cleaned.rfind("}") + 1
-            json_candidate = cleaned[start:end]
-            
-            # Clean up common issues
-            json_candidate = json_candidate.replace('\n', ' ')
-            json_candidate = re.sub(r'\s+', ' ', json_candidate)
-            
-            try:
-                return json.loads(json_candidate)
-            except json.JSONDecodeError:
-                pass
-                
-        return None
-    
     def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Make a request to the Ollama API.
@@ -196,10 +87,12 @@ class OllamaClient:
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_json = self._extract_json_from_response(response)
-            
-            if parsed_json is not None:
-                return parsed_json
+            # Try to parse JSON from response
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                return json.loads(json_str)
             else:
                 return {
                     "sentiment": "neutral",
@@ -232,9 +125,12 @@ class OllamaClient:
         prompt = f"Cluster these responses:\n{responses_text}"
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed = self._extract_json_from_response(response)
-            
-            if parsed is not None:
+            # Try to parse JSON from response
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed = json.loads(json_str)
                 # Add 2D coordinates for each response in each cluster
                 import math
                 clusters = parsed.get("clusters", [])
@@ -306,10 +202,12 @@ Please analyze these responses and provide insights."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_json = self._extract_json_from_response(response)
-            
-            if parsed_json is not None:
-                return parsed_json
+            # Try to parse JSON from response
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                return json.loads(json_str)
             else:
                 return {
                     "key_themes": [],
@@ -366,12 +264,15 @@ Please analyze these round-specific responses and provide insights."""
             response = self.generate_response(prompt, system_prompt)
             logger.info(f"[DEBUG] Ollama raw response for round {round_number}: {response}")
             
-            parsed_result = self._extract_json_from_response(response)
-            if parsed_result is not None:
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed_result = json.loads(json_str)
                 logger.info(f"[DEBUG] Parsed analysis result: {parsed_result}")
                 return parsed_result
             else:
-                logger.warning(f"[DEBUG] Failed to extract valid JSON from response: {response[:200]}...")
+                logger.warning(f"[DEBUG] No valid JSON found in response: {response}")
                 return {"summary": "Unable to parse round analysis"}
         except Exception as e:
             logger.error(f"Round insights generation failed: {e}")
@@ -415,9 +316,11 @@ Please generate the next set of inquiries."""
 
         try:
             response_str = self.generate_response(prompt, system_prompt)
-            parsed_json = self._extract_json_from_response(response_str)
-            
-            if parsed_json is not None:
+            if "{" in response_str and "}" in response_str:
+                start = response_str.find("{")
+                end = response_str.rfind("}") + 1
+                json_str = response_str[start:end]
+                parsed_json = json.loads(json_str)
                 # Ensure the response is a list of dicts with the correct keys
                 inquiries = parsed_json.get("inquiries", [])
                 if isinstance(inquiries, list) and all("title" in i and "content" in i for i in inquiries):
@@ -426,7 +329,7 @@ Please generate the next set of inquiries."""
                     logger.warning(f"Ollama returned malformed inquiries: {inquiries}")
                     return []
             else:
-                logger.warning(f"Failed to extract valid JSON from inquiries response: {response_str[:200]}...")
+                logger.warning(f"Ollama did not return valid JSON for inquiries: {response_str}")
                 return []
         except Exception as e:
             logger.error(f"Failed to generate next inquiries: {e}")
@@ -477,11 +380,17 @@ Please generate the next set of inquiries."""
         prompt = f"Extract keywords from these responses:\n{responses_text}"
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_json = self._extract_json_from_response(response)
-            if parsed_json is not None:
-                return parsed_json
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Keyword extraction failed to parse JSON: {e}. Response: {response}")
+                    return {"keywords": []}
             else:
-                logger.warning(f"Failed to extract valid JSON from keywords response: {response[:200]}...")
+                logger.warning(f"Ollama did not return valid JSON for keywords: {response}")
                 return {"keywords": []}
         except Exception as e:
             logger.error(f"Keyword extraction failed: {e}")
@@ -502,10 +411,11 @@ Please generate the next set of inquiries."""
         prompt = f"Detect consensus in these responses:\n{responses_text}"
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_json = self._extract_json_from_response(response)
-            
-            if parsed_json is not None:
-                return parsed_json
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                return json.loads(json_str)
             else:
                 return {"consensus_clusters": [], "summary": "Unable to parse consensus results"}
         except Exception as e:
@@ -544,9 +454,11 @@ Please generate the next set of inquiries."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_result = self._extract_json_from_response(response)
-            
-            if parsed_result is not None:
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed_result = json.loads(json_str)
                 statements = parsed_result.get("statements", [])
                 # Ensure we have a reasonable number of statements
                 if len(statements) > 10:
@@ -560,7 +472,7 @@ Please generate the next set of inquiries."""
                     ])
                 return {"statements": statements}
             else:
-                logger.warning(f"Failed to extract valid JSON from statement extraction: {response[:200]}...")
+                logger.warning(f"No valid JSON found in statement extraction: {response}")
                 return {"statements": ["Unable to extract statements"]}
         except Exception as e:
             logger.error(f"Statement extraction failed: {e}")
@@ -607,9 +519,11 @@ For each statement, determine if the response agrees, disagrees, or passes."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            parsed_result = self._extract_json_from_response(response)
-            
-            if parsed_result is not None:
+            if "{" in response and "}" in response:
+                start = response.find("{")
+                end = response.rfind("}") + 1
+                json_str = response[start:end]
+                parsed_result = json.loads(json_str)
                 mapping = parsed_result.get("mapping", [])
                 
                 # Ensure all statements are covered
@@ -623,7 +537,7 @@ For each statement, determine if the response agrees, disagrees, or passes."""
                 
                 return {"mapping": mapping}
             else:
-                logger.warning(f"Failed to extract valid JSON from response mapping: {response[:200]}...")
+                logger.warning(f"No valid JSON found in response mapping: {response}")
                 # Return default pass mapping for all statements
                 return {"mapping": [{"statement": stmt, "position": "pass"} for stmt in statements]}
         except Exception as e:

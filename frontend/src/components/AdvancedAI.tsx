@@ -316,42 +316,42 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
               <div className="clustering-view">
                 {analysisResults.clusters && analysisResults.clusters.length > 0 ? (
                   <>
-                    <div className="visualization-section">
-                      <OpinionVisualization
-                        clusters={analysisResults.clusters}
-                        responses={responses}
-                        onClusterClick={handleClusterClick}
-                        onResponseClick={handleResponseClick}
-                        width={800}
-                        height={500}
-                      />
-                    </div>
-                    <div className="cluster-details">
-                      <h4>Hierarchical Structure</h4>
-                      <div className="cluster-tree">
-                        {analysisResults.clusters.map(cluster => (
-                          <div key={cluster.id} className="cluster-node">
-                            <div className="cluster-info">
-                              <span className="cluster-name">{cluster.label}</span>
-                              <span className="cluster-size">({cluster.size} responses)</span>
-                              <span className="consensus-score">
-                                Consensus: {(cluster.consensus_score * 100).toFixed(0)}%
-                              </span>
-                            </div>
-                            {cluster.subclusters && (
-                              <div className="subclusters">
-                                {cluster.subclusters.map(subcluster => (
-                                  <div key={subcluster.id} className="subcluster-node">
-                                    <span className="subcluster-name">{subcluster.label}</span>
-                                    <span className="subcluster-size">({subcluster.size})</span>
-                                  </div>
-                                ))}
+                <div className="visualization-section">
+                  <OpinionVisualization
+                    clusters={analysisResults.clusters}
+                    responses={responses}
+                    onClusterClick={handleClusterClick}
+                    onResponseClick={handleResponseClick}
+                    width={800}
+                    height={500}
+                  />
+                </div>
+                <div className="cluster-details">
+                  <h4>Hierarchical Structure</h4>
+                  <div className="cluster-tree">
+                    {analysisResults.clusters.map(cluster => (
+                      <div key={cluster.id} className="cluster-node">
+                        <div className="cluster-info">
+                          <span className="cluster-name">{cluster.label}</span>
+                          <span className="cluster-size">({cluster.size} responses)</span>
+                          <span className="consensus-score">
+                            Consensus: {(cluster.consensus_score * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        {cluster.subclusters && (
+                          <div className="subclusters">
+                            {cluster.subclusters.map(subcluster => (
+                              <div key={subcluster.id} className="subcluster-node">
+                                <span className="subcluster-name">{subcluster.label}</span>
+                                <span className="subcluster-size">({subcluster.size})</span>
                               </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                </div>
                   </>
                 ) : (
                   <div className="empty-state">
@@ -367,38 +367,38 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
             {selectedAnalysis === 'entities' && (
               <div className="entities-view">
                 {analysisResults.entities && analysisResults.entities.length > 0 ? (
-                  <div className="entities-grid">
-                    {analysisResults.entities.map(entity => (
-                      <div key={entity.id} className="entity-card">
-                        <div className="entity-header">
-                          <span className="entity-icon">{getEntityTypeIcon(entity.type)}</span>
-                          <span className="entity-text">{entity.text}</span>
-                          <span 
-                            className="entity-type"
-                            style={{ backgroundColor: getEntityTypeColor(entity.type) }}
-                          >
-                            {entity.type}
+                <div className="entities-grid">
+                  {analysisResults.entities.map(entity => (
+                    <div key={entity.id} className="entity-card">
+                      <div className="entity-header">
+                        <span className="entity-icon">{getEntityTypeIcon(entity.type)}</span>
+                        <span className="entity-text">{entity.text}</span>
+                        <span 
+                          className="entity-type"
+                          style={{ backgroundColor: getEntityTypeColor(entity.type) }}
+                        >
+                          {entity.type}
+                        </span>
+                      </div>
+                      <div className="entity-metrics">
+                        <div className="metric">
+                          <span className="metric-label">Frequency:</span>
+                          <span className="metric-value">{entity.frequency}</span>
+                        </div>
+                        <div className="metric">
+                          <span className="metric-label">Confidence:</span>
+                          <span className="metric-value">{(entity.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="metric">
+                          <span className="metric-label">Sentiment:</span>
+                          <span className={`metric-value ${entity.sentiment > 0 ? 'positive' : 'negative'}`}>
+                            {(entity.sentiment * 100).toFixed(0)}%
                           </span>
                         </div>
-                        <div className="entity-metrics">
-                          <div className="metric">
-                            <span className="metric-label">Frequency:</span>
-                            <span className="metric-value">{entity.frequency}</span>
-                          </div>
-                          <div className="metric">
-                            <span className="metric-label">Confidence:</span>
-                            <span className="metric-value">{(entity.confidence * 100).toFixed(0)}%</span>
-                          </div>
-                          <div className="metric">
-                            <span className="metric-label">Sentiment:</span>
-                            <span className={`metric-value ${entity.sentiment > 0 ? 'positive' : 'negative'}`}>
-                              {(entity.sentiment * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
                 ) : (
                   <div className="empty-state">
                     <div className="empty-icon">🔍</div>

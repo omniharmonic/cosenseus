@@ -33,7 +33,7 @@
 }
 
 .progress-step {
-  padding: var(--spacing-unit-2) var(--spacing-unit-3);
+  padding: var(--spacing-unit-2) var(--spacing-unit-4);
   border-radius: var(--border-radius-medium);
   background: var(--background-color-dark);
   color: var(--text-color-secondary-dark);
@@ -42,11 +42,8 @@
   transition: all 0.3s ease;
   border: 1px solid var(--border-color-dark);
   position: relative;
-  min-width: 140px;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 80px;
+  text-align: center;
 }
 
 .progress-step.active {
