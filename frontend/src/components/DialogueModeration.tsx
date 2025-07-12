@@ -7,6 +7,13 @@ import { useNotification } from './common/NotificationProvider';
 interface Prompt {
   title: string;
   content: string;
+  regenerated?: boolean;
+  parameters?: {
+    creativity_level: string;
+    tone: string;
+    length: string;
+    focus_areas?: string[];
+  };
 }
 
 interface SynthesisReview {
@@ -26,6 +33,13 @@ interface DialogueModerationProps {
   onApprovalSuccess: () => void;
 }
 
+interface RegenerateParams {
+  creativity_level: 'conservative' | 'moderate' | 'creative';
+  tone: 'analytical' | 'engaging' | 'challenging';
+  length: 'brief' | 'standard' | 'detailed';
+  focus_areas: string[];
+}
+
 const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundNumber, onApprovalSuccess }) => {
   const [synthesis, setSynthesis] = useState<SynthesisReview | null>(null);
   const [editablePrompts, setEditablePrompts] = useState<Prompt[]>([]);
@@ -34,6 +48,15 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
   const [isApproving, setIsApproving] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateParams, setRegenerateParams] = useState<RegenerateParams>({
+    creativity_level: 'moderate',
+    tone: 'analytical',
+    length: 'standard',
+    focus_areas: []
+  });
+  const [focusAreaInput, setFocusAreaInput] = useState('');
   const { showNotification } = useNotification();
 
   useEffect(() => {
@@ -71,6 +94,66 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
     const newPrompts = [...editablePrompts];
     newPrompts[index] = { ...newPrompts[index], content: value };
     setEditablePrompts(newPrompts);
+  };
+
+  const handleRegeneratePrompts = async () => {
+    if (!synthesis) return;
+    setIsRegenerating(true);
+    
+    try {
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
+      const response = await fetch(`/api/v1/ai/synthesis-review/${synthesis.id}/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Code': sessionCode || ''
+        },
+        body: JSON.stringify(regenerateParams)
+      });
+
+      if (response.ok) {
+        const updatedSynthesis = await response.json();
+        setSynthesis(updatedSynthesis);
+        
+        // Update editable prompts with regenerated ones
+        const newPrompts = (updatedSynthesis.next_round_prompts || []).map((p: any) => 
+          typeof p === 'string' ? { title: 'Generated Prompt', content: p } : p
+        );
+        setEditablePrompts(newPrompts);
+        
+        showNotification('Prompts regenerated successfully!', 'success');
+        setShowRegenerateModal(false);
+        setError(null);
+      } else {
+        const errorData = await response.json();
+        const errorMsg = errorData.detail || 'Failed to regenerate prompts';
+        setError(errorMsg);
+        showNotification(errorMsg, 'error');
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to regenerate prompts';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const addFocusArea = () => {
+    if (focusAreaInput.trim() && !regenerateParams.focus_areas.includes(focusAreaInput.trim())) {
+      setRegenerateParams(prev => ({
+        ...prev,
+        focus_areas: [...prev.focus_areas, focusAreaInput.trim()]
+      }));
+      setFocusAreaInput('');
+    }
+  };
+
+  const removeFocusArea = (area: string) => {
+    setRegenerateParams(prev => ({
+      ...prev,
+      focus_areas: prev.focus_areas.filter(a => a !== area)
+    }));
   };
 
   const handleUpdateSynthesis = async (): Promise<boolean> => {
@@ -159,13 +242,29 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
         {synthesis.summary}
       </div>
 
-      <h4>Proposed Prompts for Next Round:</h4>
+      <div className="prompts-header">
+        <h4>Proposed Prompts for Next Round:</h4>
+        <button 
+          className="btn btn-secondary regenerate-all-btn"
+          onClick={() => setShowRegenerateModal(true)}
+          disabled={isRegenerating || isSaving}
+        >
+          🔄 Regenerate All Prompts
+        </button>
+      </div>
+      
       <p>Review, edit, and approve the AI-generated prompts for the next round of dialogue.</p>
       {error && <div className="dialogue-moderation-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      
       <div className="prompt-list">
         {editablePrompts.map((prompt, index) => (
           <div key={index} className="prompt-item">
-            <h5 className="prompt-title">{prompt.title}</h5>
+            <div className="prompt-header">
+              <h5 className="prompt-title">{prompt.title}</h5>
+              {prompt.regenerated && (
+                <span className="regenerated-badge">🔄 Regenerated</span>
+              )}
+            </div>
             {editingPromptIndex === index ? (
               <textarea
                 value={prompt.content}
@@ -175,6 +274,17 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
               />
             ) : (
               <p className="prompt-text">{prompt.content}</p>
+            )}
+            {prompt.parameters && (
+              <div className="regeneration-params">
+                <small>
+                  Generated with: {prompt.parameters.creativity_level} creativity, 
+                  {prompt.parameters.tone} tone, {prompt.parameters.length} length
+                  {prompt.parameters.focus_areas && prompt.parameters.focus_areas.length > 0 && 
+                    `, focusing on: ${prompt.parameters.focus_areas.join(', ')}`
+                  }
+                </small>
+              </div>
             )}
             <div className="prompt-actions">
               {editingPromptIndex === index ? (
@@ -197,6 +307,93 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
         </button>
         {editingPromptIndex !== null && <p className="save-prompt-notice">Please save your changes before approving.</p>}
       </div>
+
+      {/* Regenerate Modal */}
+      {showRegenerateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Regenerate Prompts</h3>
+            <p>Adjust parameters to regenerate all prompts with different characteristics:</p>
+            
+            <div className="param-group">
+              <label>Creativity Level:</label>
+              <select 
+                value={regenerateParams.creativity_level}
+                onChange={(e) => setRegenerateParams(prev => ({...prev, creativity_level: e.target.value as any}))}
+              >
+                <option value="conservative">Conservative (focused, predictable)</option>
+                <option value="moderate">Moderate (balanced)</option>
+                <option value="creative">Creative (innovative, varied)</option>
+              </select>
+            </div>
+
+            <div className="param-group">
+              <label>Tone:</label>
+              <select 
+                value={regenerateParams.tone}
+                onChange={(e) => setRegenerateParams(prev => ({...prev, tone: e.target.value as any}))}
+              >
+                <option value="analytical">Analytical (thoughtful, examining)</option>
+                <option value="engaging">Engaging (conversational, welcoming)</option>
+                <option value="challenging">Challenging (probing, deeper thinking)</option>
+              </select>
+            </div>
+
+            <div className="param-group">
+              <label>Length:</label>
+              <select 
+                value={regenerateParams.length}
+                onChange={(e) => setRegenerateParams(prev => ({...prev, length: e.target.value as any}))}
+              >
+                <option value="brief">Brief (concise questions)</option>
+                <option value="standard">Standard (moderate detail)</option>
+                <option value="detailed">Detailed (comprehensive context)</option>
+              </select>
+            </div>
+
+            <div className="param-group">
+              <label>Focus Areas (optional):</label>
+              <div className="focus-areas-input">
+                <input
+                  type="text"
+                  value={focusAreaInput}
+                  onChange={(e) => setFocusAreaInput(e.target.value)}
+                  placeholder="Add a focus area..."
+                  onKeyPress={(e) => e.key === 'Enter' && addFocusArea()}
+                />
+                <button type="button" onClick={addFocusArea} className="btn btn-secondary btn-sm">
+                  Add
+                </button>
+              </div>
+              <div className="focus-areas-list">
+                {regenerateParams.focus_areas.map((area, index) => (
+                  <span key={index} className="focus-area-tag">
+                    {area}
+                    <button onClick={() => removeFocusArea(area)}>×</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowRegenerateModal(false)}
+                disabled={isRegenerating}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleRegeneratePrompts}
+                disabled={isRegenerating}
+              >
+                {isRegenerating ? 'Regenerating...' : 'Regenerate Prompts'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

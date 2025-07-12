@@ -7,7 +7,7 @@ import os
 import json
 import uuid
 from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -358,6 +358,206 @@ async def update_synthesis_review(
     db.refresh(synthesis)
 
     return synthesis
+
+
+class RegeneratePromptsRequest(BaseModel):
+    creativity_level: str = Field(default="moderate", description="Creativity level: conservative, moderate, creative")
+    focus_areas: Optional[List[str]] = Field(default=None, description="Areas to emphasize in regeneration")
+    tone: str = Field(default="analytical", description="Tone: analytical, engaging, challenging")
+    length: str = Field(default="standard", description="Length: brief, standard, detailed")
+
+@router.post("/ai/synthesis-review/{synthesis_id}/regenerate", response_model=SynthesisResponse)
+async def regenerate_synthesis_prompts(
+    synthesis_id: str,
+    regenerate_request: RegeneratePromptsRequest,
+    db: Session = Depends(get_local_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Regenerate prompts for a synthesis review with different parameters.
+    """
+    # Get the synthesis
+    synthesis = db.query(Synthesis).options(joinedload(Synthesis.event)).filter(
+        Synthesis.id == synthesis_id
+    ).first()
+
+    if not synthesis:
+        raise HTTPException(status_code=404, detail="Synthesis not found")
+
+    event = synthesis.event
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the event organizer can regenerate prompts")
+
+    try:
+        # Get the original analysis data to regenerate from
+        current_round_number = synthesis.round_number
+        
+        # Get responses for the current round
+        inquiries = db.query(Inquiry).filter(
+            Inquiry.event_id == event.id,
+            Inquiry.round_number == current_round_number
+        ).all()
+        
+        inquiry_ids = [str(i.id) for i in inquiries]
+        responses = db.query(Response).filter(
+            Response.inquiry_id.in_(inquiry_ids)
+        ).all()
+
+        if not responses:
+            raise HTTPException(status_code=400, detail="No responses available for regeneration")
+
+        # Prepare data for regeneration
+        response_data = [
+            {
+                "content": r.content,
+                "inquiry_title": r.inquiry.question_text if r.inquiry else "Unknown"
+            }
+            for r in responses
+        ]
+        
+        event_data = {
+            "title": event.title,
+            "description": event.description,
+            "event_type": event.event_type
+        }
+        
+        # Adjust Ollama parameters based on request
+        temperature = {
+            "conservative": 0.3,
+            "moderate": 0.7,
+            "creative": 1.0
+        }.get(regenerate_request.creativity_level, 0.7)
+        
+        # Create enhanced prompt with additional instructions
+        enhanced_instructions = []
+        
+        if regenerate_request.focus_areas:
+            enhanced_instructions.append(f"Focus particularly on these areas: {', '.join(regenerate_request.focus_areas)}")
+        
+        if regenerate_request.tone == "engaging":
+            enhanced_instructions.append("Use an engaging, conversational tone that encourages participation.")
+        elif regenerate_request.tone == "challenging":
+            enhanced_instructions.append("Pose challenging questions that push participants to think deeper.")
+        elif regenerate_request.tone == "analytical":
+            enhanced_instructions.append("Use an analytical, thoughtful tone focused on understanding different perspectives.")
+        
+        if regenerate_request.length == "brief":
+            enhanced_instructions.append("Keep questions concise and focused.")
+        elif regenerate_request.length == "detailed":
+            enhanced_instructions.append("Provide detailed context and multi-part questions.")
+        
+        # Store current prompts as backup
+        original_prompts = synthesis.next_round_prompts.copy() if synthesis.next_round_prompts else []
+        
+        # Generate new prompts with enhanced parameters
+        try:
+            # Use generate_round_insights for consistency but with modified parameters
+            analysis_result = ollama_client.generate_round_insights(
+                event_data, 
+                response_data, 
+                current_round_number,
+                temperature=temperature,
+                additional_instructions=enhanced_instructions
+            )
+            
+            # Extract new prompts from the analysis
+            if "dialogue_opportunities" in analysis_result:
+                new_prompts = [
+                    {
+                        "title": f"Follow-up Question {i+1}",
+                        "content": opportunity,
+                        "regenerated": True,
+                        "parameters": {
+                            "creativity_level": regenerate_request.creativity_level,
+                            "tone": regenerate_request.tone,
+                            "length": regenerate_request.length,
+                            "focus_areas": regenerate_request.focus_areas
+                        }
+                    }
+                    for i, opportunity in enumerate(analysis_result["dialogue_opportunities"][:3])
+                ]
+            else:
+                # Fallback: Use previous inquiries as base for modification
+                previous_inquiries = [q.question_text for q in inquiries]
+                new_prompts = ollama_client.generate_next_inquiries(
+                    synthesis.summary or synthesis.content,
+                    previous_inquiries,
+                    temperature=temperature
+                )
+                
+                # Add regeneration metadata
+                for prompt in new_prompts:
+                    prompt["regenerated"] = True
+                    prompt["parameters"] = {
+                        "creativity_level": regenerate_request.creativity_level,
+                        "tone": regenerate_request.tone,
+                        "length": regenerate_request.length,
+                        "focus_areas": regenerate_request.focus_areas
+                    }
+            
+            # Update synthesis with new prompts
+            synthesis.next_round_prompts = new_prompts
+            synthesis.updated_at = datetime.now(timezone.utc)
+            
+            # Store regeneration history
+            if not hasattr(synthesis, 'prompt_history'):
+                synthesis.prompt_history = []
+            
+            synthesis.prompt_history.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "prompts": original_prompts,
+                "regeneration_count": len(synthesis.prompt_history) + 1
+            })
+            
+            db.commit()
+            db.refresh(synthesis)
+            
+            return synthesis
+            
+        except Exception as ollama_error:
+            # Fallback to template-based regeneration
+            print(f"Ollama regeneration failed, using template fallback: {ollama_error}")
+            
+            # Create varied prompts based on parameters
+            base_prompts = [
+                "What new perspectives emerged from the previous discussion?",
+                "How can we build on the areas of agreement identified?",
+                "What concerns need further exploration?",
+                "What would an ideal solution look like from your perspective?"
+            ]
+            
+            # Modify prompts based on parameters
+            if regenerate_request.tone == "challenging":
+                base_prompts = [prompt.replace("What", "Why do you think").replace("How", "What challenges arise when") for prompt in base_prompts]
+            elif regenerate_request.tone == "engaging":
+                base_prompts = [f"Let's explore: {prompt.lower()}" for prompt in base_prompts]
+            
+            new_prompts = [
+                {
+                    "title": f"Generated Question {i+1}",
+                    "content": prompt,
+                    "regenerated": True,
+                    "fallback": True,
+                    "parameters": {
+                        "creativity_level": regenerate_request.creativity_level,
+                        "tone": regenerate_request.tone,
+                        "length": regenerate_request.length
+                    }
+                }
+                for i, prompt in enumerate(base_prompts[:3])
+            ]
+            
+            synthesis.next_round_prompts = new_prompts
+            synthesis.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(synthesis)
+            
+            return synthesis
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prompt regeneration failed: {str(e)}")
 
 
 @router.post("/ai/synthesis-review/{synthesis_id}/approve", response_model=SynthesisResponse)

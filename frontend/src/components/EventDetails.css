@@ -250,4 +250,219 @@
   .event-title-section h1 {
     font-size: 2rem;
   }
+}
+
+/* Export and End Dialogue Functionality */
+
+.end-dialogue-btn {
+  background-color: #fd7e14;
+  border-color: #fd7e14;
+  color: white;
+}
+
+.end-dialogue-btn:hover:not(:disabled) {
+  background-color: #e76500;
+  border-color: #e76500;
+}
+
+.export-btn {
+  background-color: #198754;
+  border-color: #198754;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-btn:hover:not(:disabled) {
+  background-color: #146c43;
+  border-color: #146c43;
+}
+
+/* Export Modal Styles */
+
+.export-modal {
+  max-width: 600px;
+  width: 95%;
+}
+
+.export-options {
+  margin: 1.5rem 0;
+}
+
+.option-group {
+  margin-bottom: 1.5rem;
+}
+
+.option-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.option-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: #fff;
+  color: #333;
+}
+
+.option-group select:focus {
+  outline: none;
+  border-color: #40e0d0;
+  box-shadow: 0 0 0 2px rgba(64, 224, 208, 0.2);
+}
+
+.checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.export-descriptions {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border: 1px solid #e9ecef;
+}
+
+.description-item {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #dee2e6;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.description-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.description-item strong {
+  color: #212529;
+  display: inline-block;
+  min-width: 100px;
+}
+
+/* Modal Styles (shared with DialogueModeration) */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.3rem;
+}
+
+.modal-content p {
+  color: #666;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.modal-actions button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.modal-actions .btn-secondary {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.modal-actions .btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.modal-actions .btn-success {
+  background-color: #198754;
+  color: #fff;
+}
+
+.modal-actions .btn-success:hover:not(:disabled) {
+  background-color: #146c43;
+}
+
+.modal-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 1.5rem;
+    margin: 1rem;
+    width: auto;
+  }
+
+  .export-modal {
+    max-width: none;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-buttons .btn {
+    margin-bottom: 0.5rem;
+  }
 } 

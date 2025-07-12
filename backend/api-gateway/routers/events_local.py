@@ -725,3 +725,402 @@ async def update_event(
         organizer_id=str(event.organizer_id),
         inquiries=[InquiryResponse.model_validate(inq) for inq in event.inquiries]
     ) 
+
+
+# Export and End Dialogue Functionality
+
+class ExportRequest(BaseModel):
+    format: str = Field(..., description="Export format: json, csv, markdown, pdf")
+    type: str = Field(..., description="Export type: raw_data, proposal, agreement, synthesis, roadmap")
+    include_analysis: bool = Field(default=True, description="Include AI analysis in export")
+
+class ExportResponse(BaseModel):
+    event_id: str
+    export_type: str
+    format: str
+    filename: str
+    content: str
+    generated_at: datetime
+
+@router.post("/{event_id}/end-dialogue", status_code=200)
+async def end_dialogue(
+    event_id: str,
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
+):
+    """End the dialogue for an event and mark it as completed."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check if user is organizer
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the event organizer can end the dialogue")
+    
+    # Update event status to completed
+    event.status = EventStatus.COMPLETED
+    event.end_time = datetime.now(timezone.utc)
+    event.updated_at = datetime.now(timezone.utc)
+    
+    # Mark current round as completed
+    current_round = db.query(EventRound).filter(
+        EventRound.event_id == event_id,
+        EventRound.round_number == event.current_round
+    ).first()
+    
+    if current_round:
+        current_round.status = EventRoundStatus.COMPLETED
+    
+    db.commit()
+    
+    return {
+        "message": "Dialogue ended successfully",
+        "event_id": event_id,
+        "final_round": event.current_round,
+        "completed_at": event.end_time.isoformat()
+    }
+
+@router.post("/{event_id}/export", response_model=ExportResponse)
+async def export_event_data(
+    event_id: str,
+    export_request: ExportRequest,
+    db: Session = Depends(get_local_db),
+    current_user: TemporaryUser = Depends(get_current_user)
+):
+    """Export event data in various formats."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check if user is organizer
+    if str(event.organizer_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the event organizer can export event data")
+    
+    try:
+        # Generate export content based on type
+        if export_request.type == "raw_data":
+            content = await _export_raw_data(event, db, export_request.format)
+        elif export_request.type == "proposal":
+            content = await _generate_proposal(event, db, export_request.format)
+        elif export_request.type == "agreement":
+            content = await _generate_agreement(event, db, export_request.format)
+        elif export_request.type == "synthesis":
+            content = await _generate_synthesis_report(event, db, export_request.format)
+        elif export_request.type == "roadmap":
+            content = await _generate_roadmap(event, db, export_request.format)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported export type: {export_request.type}")
+        
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{event.title.replace(' ', '_')}_{export_request.type}_{timestamp}.{export_request.format}"
+        
+        return ExportResponse(
+            event_id=event_id,
+            export_type=export_request.type,
+            format=export_request.format,
+            filename=filename,
+            content=content,
+            generated_at=datetime.now(timezone.utc)
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+# Export helper functions
+
+async def _export_raw_data(event: Event, db: Session, format: str) -> str:
+    """Export raw event data."""
+    # Get all responses, inquiries, and analysis
+    responses = db.query(Response).join(Inquiry).filter(Inquiry.event_id == event.id).all()
+    inquiries = db.query(Inquiry).filter(Inquiry.event_id == event.id).all()
+    syntheses = db.query(Synthesis).filter(Synthesis.event_id == event.id).all()
+    
+    if format == "json":
+        data = {
+            "event": {
+                "id": str(event.id),
+                "title": event.title,
+                "description": event.description,
+                "event_type": event.event_type,
+                "status": event.status.value,
+                "created_at": event.created_at.isoformat(),
+                "updated_at": event.updated_at.isoformat() if event.updated_at else None,
+                "current_round": event.current_round
+            },
+            "inquiries": [
+                {
+                    "id": str(i.id),
+                    "question_text": i.question_text,
+                    "description": i.description,
+                    "round_number": i.round_number,
+                    "order_index": i.order_index
+                }
+                for i in inquiries
+            ],
+            "responses": [
+                {
+                    "id": str(r.id),
+                    "content": r.content,
+                    "round_number": r.round_number,
+                    "created_at": r.created_at.isoformat(),
+                    "inquiry_id": str(r.inquiry_id),
+                    "is_anonymous": r.is_anonymous
+                }
+                for r in responses
+            ],
+            "analysis": [
+                {
+                    "round_number": s.round_number,
+                    "summary": s.summary,
+                    "content": s.content,
+                    "key_themes": s.key_themes,
+                    "consensus_points": s.consensus_points,
+                    "dialogue_opportunities": s.dialogue_opportunities,
+                    "common_desired_outcomes": s.common_desired_outcomes,
+                    "common_strategies": s.common_strategies,
+                    "common_values": s.common_values,
+                    "created_at": s.created_at.isoformat()
+                }
+                for s in syntheses
+            ]
+        }
+        return json.dumps(data, indent=2)
+    
+    elif format == "csv":
+        # Create CSV format for responses
+        csv_lines = ["Round,Inquiry,Response,Created_At,Anonymous"]
+        for r in responses:
+            inquiry = next((i for i in inquiries if i.id == r.inquiry_id), None)
+            inquiry_text = inquiry.question_text.replace('"', '""') if inquiry else "Unknown"
+            response_text = r.content.replace('"', '""')
+            csv_lines.append(f'{r.round_number},"{inquiry_text}","{response_text}",{r.created_at.isoformat()},{r.is_anonymous}')
+        return "\n".join(csv_lines)
+    
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported format for raw data: {format}")
+
+async def _generate_proposal(event: Event, db: Session, format: str) -> str:
+    """Generate a proposal document using AI."""
+    # Get event analysis
+    syntheses = db.query(Synthesis).filter(Synthesis.event_id == event.id).all()
+    responses = db.query(Response).join(Inquiry).filter(Inquiry.event_id == event.id).all()
+    
+    if not syntheses and not responses:
+        raise HTTPException(status_code=400, detail="No data available to generate proposal")
+    
+    # Prepare data for AI generation
+    analysis_data = []
+    for s in syntheses:
+        analysis_data.append({
+            "round": s.round_number,
+            "summary": s.summary or s.content,
+            "key_themes": s.key_themes or [],
+            "consensus_points": s.consensus_points or [],
+            "common_desired_outcomes": s.common_desired_outcomes or [],
+            "common_strategies": s.common_strategies or []
+        })
+    
+    # Generate proposal using Ollama
+    prompt = f"""Based on the following event analysis, generate a comprehensive proposal document for: {event.title}
+
+Event Description: {event.description}
+
+Analysis Data: {json.dumps(analysis_data, indent=2)}
+
+Please create a structured proposal that includes:
+1. Executive Summary
+2. Background and Context
+3. Key Findings
+4. Proposed Actions
+5. Implementation Strategy
+6. Expected Outcomes
+7. Next Steps
+
+Format: {'Markdown' if format == 'markdown' else 'Plain text'}
+"""
+
+    try:
+        proposal_content = ollama_client.generate_response(prompt, "You are an expert policy writer creating civic proposals.")
+        return proposal_content
+    except Exception as e:
+        # Fallback to structured template
+        return f"""# Proposal for {event.title}
+
+## Executive Summary
+Based on community dialogue conducted through {len(syntheses)} rounds of engagement.
+
+## Key Findings
+{chr(10).join([f"- {theme}" for s in syntheses for theme in (s.key_themes or [])])}
+
+## Consensus Points
+{chr(10).join([f"- {point}" for s in syntheses for point in (s.consensus_points or [])])}
+
+## Proposed Actions
+{chr(10).join([f"- {outcome}" for s in syntheses for outcome in (s.common_desired_outcomes or [])])}
+
+## Implementation Strategy
+{chr(10).join([f"- {strategy}" for s in syntheses for strategy in (s.common_strategies or [])])}
+
+Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+
+async def _generate_agreement(event: Event, db: Session, format: str) -> str:
+    """Generate an agreement document using AI."""
+    syntheses = db.query(Synthesis).filter(Synthesis.event_id == event.id).all()
+    
+    if not syntheses:
+        raise HTTPException(status_code=400, detail="No analysis data available to generate agreement")
+    
+    # Extract consensus points from all rounds
+    all_consensus = []
+    for s in syntheses:
+        if s.consensus_points:
+            all_consensus.extend(s.consensus_points)
+    
+    prompt = f"""Create a community agreement document for: {event.title}
+
+Based on consensus points identified through dialogue:
+{json.dumps(all_consensus, indent=2)}
+
+Generate a formal agreement document that includes:
+1. Agreement Title
+2. Participating Parties
+3. Shared Values and Principles
+4. Agreed-Upon Actions
+5. Commitments and Responsibilities
+6. Implementation Timeline
+7. Review and Evaluation Process
+
+Format: {'Markdown' if format == 'markdown' else 'Plain text'}
+"""
+
+    try:
+        agreement_content = ollama_client.generate_response(prompt, "You are an expert facilitator creating community agreements.")
+        return agreement_content
+    except Exception as e:
+        # Fallback template
+        return f"""# Community Agreement: {event.title}
+
+## Shared Principles
+{chr(10).join([f"- {point}" for point in all_consensus[:5]])}
+
+## Commitments
+{chr(10).join([f"- {point}" for point in all_consensus[5:10]])}
+
+## Next Steps
+- Regular review meetings
+- Progress monitoring
+- Community updates
+
+Agreement created: {datetime.now().strftime('%Y-%m-%d')}
+"""
+
+async def _generate_synthesis_report(event: Event, db: Session, format: str) -> str:
+    """Generate a comprehensive synthesis report."""
+    syntheses = db.query(Synthesis).filter(Synthesis.event_id == event.id).all()
+    responses = db.query(Response).join(Inquiry).filter(Inquiry.event_id == event.id).all()
+    
+    if not syntheses:
+        raise HTTPException(status_code=400, detail="No synthesis data available")
+    
+    report = f"""# Dialogue Synthesis Report: {event.title}
+
+## Event Overview
+- **Description**: {event.description}
+- **Dialogue Rounds**: {len(syntheses)}
+- **Total Responses**: {len(responses)}
+- **Period**: {event.created_at.strftime('%Y-%m-%d')} to {event.updated_at.strftime('%Y-%m-%d') if event.updated_at else 'ongoing'}
+
+## Round-by-Round Analysis
+
+"""
+    
+    for s in syntheses:
+        report += f"""### Round {s.round_number}
+**Summary**: {s.summary or s.content}
+
+**Key Themes**:
+{chr(10).join([f"- {theme}" for theme in (s.key_themes or [])])}
+
+**Consensus Points**:
+{chr(10).join([f"- {point}" for point in (s.consensus_points or [])])}
+
+**Common Desired Outcomes**:
+{chr(10).join([f"- {outcome}" for outcome in (s.common_desired_outcomes or [])])}
+
+**Common Values**:
+{chr(10).join([f"- {value}" for value in (s.common_values or [])])}
+
+**Common Strategies**:
+{chr(10).join([f"- {strategy}" for strategy in (s.common_strategies or [])])}
+
+---
+
+"""
+    
+    report += f"""## Overall Synthesis
+
+This dialogue engaged the community through {len(syntheses)} rounds of structured conversation, resulting in shared understanding and actionable insights.
+
+Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+    
+    return report
+
+async def _generate_roadmap(event: Event, db: Session, format: str) -> str:
+    """Generate an implementation roadmap using AI."""
+    syntheses = db.query(Synthesis).filter(Synthesis.event_id == event.id).all()
+    
+    if not syntheses:
+        raise HTTPException(status_code=400, detail="No data available to generate roadmap")
+    
+    # Extract all strategic elements
+    all_strategies = []
+    all_outcomes = []
+    for s in syntheses:
+        if s.common_strategies:
+            all_strategies.extend(s.common_strategies)
+        if s.common_desired_outcomes:
+            all_outcomes.extend(s.common_desired_outcomes)
+    
+    prompt = f"""Create an implementation roadmap for: {event.title}
+
+Based on identified strategies: {json.dumps(all_strategies, indent=2)}
+And desired outcomes: {json.dumps(all_outcomes, indent=2)}
+
+Generate a roadmap with:
+1. Short-term actions (0-3 months)
+2. Medium-term goals (3-12 months)  
+3. Long-term vision (1-3 years)
+4. Success metrics for each phase
+5. Resource requirements
+6. Stakeholder responsibilities
+7. Risk mitigation strategies
+
+Format: {'Markdown' if format == 'markdown' else 'Plain text'}
+"""
+
+    try:
+        roadmap_content = ollama_client.generate_response(prompt, "You are an expert strategic planner creating implementation roadmaps.")
+        return roadmap_content
+    except Exception as e:
+        # Fallback template
+        return f"""# Implementation Roadmap: {event.title}
+
+## Short-term Actions (0-3 months)
+{chr(10).join([f"- {strategy}" for strategy in all_strategies[:3]])}
+
+## Medium-term Goals (3-12 months)
+{chr(10).join([f"- {outcome}" for outcome in all_outcomes[:3]])}
+
+## Long-term Vision (1-3 years)
+{chr(10).join([f"- {strategy}" for strategy in all_strategies[3:6]])}
+
+## Success Metrics
+- Community engagement levels
+- Implementation progress
+- Outcome achievement
+
+Created: {datetime.now().strftime('%Y-%m-%d')}
+""" 

@@ -61,6 +61,12 @@ interface RoundState {
   status: string;
 }
 
+interface ExportOptions {
+  type: 'raw_data' | 'proposal' | 'agreement' | 'synthesis' | 'roadmap';
+  format: 'json' | 'csv' | 'markdown';
+  include_analysis: boolean;
+}
+
 const EventDetails: React.FC<EventDetailsProps> = ({ 
   eventId, 
   user, 
@@ -75,12 +81,20 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [copiedLink, setCopiedLink] = useState<'participate' | 'results' | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [isAdvancingRound, setIsAdvancingRound] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState<string>('');
+  const [analysisStep, setAnalysisStep] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isEndingDialogue, setIsEndingDialogue] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>({
+    type: 'raw_data',
+    format: 'json',
+    include_analysis: true
+  });
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
 
   // DEBUG: Log user and userRole data
   useEffect(() => {
@@ -268,6 +282,89 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       console.error('Error publishing event:', err);
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleEndDialogue = async () => {
+    if (!event || !isCurrentUserAdmin()) return;
+    
+    const confirmEnd = window.confirm(
+      'Are you sure you want to end this dialogue? This will mark the event as completed and no further rounds can be added.'
+    );
+    
+    if (!confirmEnd) return;
+    
+    setIsEndingDialogue(true);
+    
+    try {
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
+      const response = await fetch(`/api/v1/events/${eventId}/end-dialogue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Code': sessionCode || ''
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setEvent(prev => prev ? { ...prev, status: 'completed' } : null);
+        setShowExportModal(true);
+        // Show success notification
+        alert(`Dialogue ended successfully! Final round: ${result.final_round}`);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to end dialogue: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Error ending dialogue: ${err.message}`);
+    } finally {
+      setIsEndingDialogue(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!event) return;
+    
+    setIsExporting(true);
+    
+    try {
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
+      const response = await fetch(`/api/v1/events/${eventId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Code': sessionCode || ''
+        },
+        body: JSON.stringify(exportOptions)
+      });
+
+      if (response.ok) {
+        const exportResult = await response.json();
+        
+        // Create and download file
+        const blob = new Blob([exportResult.content], { 
+          type: exportOptions.format === 'json' ? 'application/json' : 'text/plain' 
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = exportResult.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('Export downloaded successfully!');
+        setShowExportModal(false);
+      } else {
+        const errorData = await response.json();
+        alert(`Export failed: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Export error: ${err.message}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -465,7 +562,25 @@ const EventDetails: React.FC<EventDetailsProps> = ({
                   <span>{analysisStep}</span>
                 </div>
               )}
+              {/* End Dialogue Button */}
+              <button 
+                className="btn btn-warning end-dialogue-btn"
+                onClick={handleEndDialogue}
+                disabled={isEndingDialogue}
+              >
+                {isEndingDialogue ? 'Ending...' : 'End Dialogue'}
+              </button>
             </>
+          )}
+
+          {/* Export Button for Completed Events */}
+          {isCurrentUserAdmin() && event.status === 'completed' && (
+            <button 
+              className="btn btn-success export-btn"
+              onClick={() => setShowExportModal(true)}
+            >
+              📋 Export Results
+            </button>
           )}
 
           <button 
@@ -504,6 +619,90 @@ const EventDetails: React.FC<EventDetailsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="modal-overlay">
+          <div className="modal-content export-modal">
+            <h3>Export Event Results</h3>
+            <p>Choose what type of export you'd like to generate:</p>
+            
+            <div className="export-options">
+              <div className="option-group">
+                <label>Export Type:</label>
+                <select 
+                  value={exportOptions.type}
+                  onChange={(e) => setExportOptions(prev => ({...prev, type: e.target.value as any}))}
+                >
+                  <option value="raw_data">Raw Data (all responses and analysis)</option>
+                  <option value="synthesis">Synthesis Report (comprehensive summary)</option>
+                  <option value="proposal">Proposal Document (AI-generated proposal)</option>
+                  <option value="agreement">Agreement Document (consensus points)</option>
+                  <option value="roadmap">Implementation Roadmap (action plan)</option>
+                </select>
+              </div>
+
+              <div className="option-group">
+                <label>Format:</label>
+                <select 
+                  value={exportOptions.format}
+                  onChange={(e) => setExportOptions(prev => ({...prev, format: e.target.value as any}))}
+                >
+                  <option value="markdown">Markdown (.md)</option>
+                  <option value="json">JSON (.json)</option>
+                  {exportOptions.type === 'raw_data' && <option value="csv">CSV (.csv)</option>}
+                </select>
+              </div>
+
+              <div className="option-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.include_analysis}
+                    onChange={(e) => setExportOptions(prev => ({...prev, include_analysis: e.target.checked}))}
+                  />
+                  Include AI analysis data
+                </label>
+              </div>
+            </div>
+
+            <div className="export-descriptions">
+              <div className="description-item">
+                <strong>Raw Data:</strong> All participant responses, inquiries, and analysis data
+              </div>
+              <div className="description-item">
+                <strong>Synthesis Report:</strong> Comprehensive summary of all dialogue rounds
+              </div>
+              <div className="description-item">
+                <strong>Proposal:</strong> AI-generated proposal document based on dialogue outcomes
+              </div>
+              <div className="description-item">
+                <strong>Agreement:</strong> Community agreement based on consensus points
+              </div>
+              <div className="description-item">
+                <strong>Roadmap:</strong> Implementation plan with actions and timelines
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowExportModal(false)}
+                disabled={isExporting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-success" 
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                {isExporting ? 'Generating Export...' : 'Download Export'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Event Information */}
       <div className="event-info-grid">

@@ -353,7 +353,8 @@ Please analyze these responses and provide insights."""
                 "summary": f"Error in insights generation: {e}"
             }
     
-    def generate_round_insights(self, event_data: Dict[str, Any], responses: List[Dict[str, Any]], round_number: int) -> Dict[str, Any]:
+    def generate_round_insights(self, event_data: Dict[str, Any], responses: List[Dict[str, Any]], round_number: int, 
+                              temperature: float = 0.7, additional_instructions: List[str] = None) -> Dict[str, Any]:
         """
         Generate insights for a specific round with context from previous rounds.
         
@@ -361,14 +362,22 @@ Please analyze these responses and provide insights."""
             event_data: Event information
             responses: List of response data for this round
             round_number: Current round number
+            temperature: Temperature for generation (0.0-1.0, higher = more creative)
+            additional_instructions: Optional list of additional instructions to include
             
         Returns:
             Generated insights with round-specific analysis
         """
-        system_prompt = f"""You are a civic engagement expert analyzing round {round_number} of a dialogue. 
-        Based on the responses and the round context, provide insights that build on previous rounds.
+        # Build system prompt with additional instructions if provided
+        base_system_prompt = f"""You are a civic engagement expert analyzing round {round_number} of a dialogue. 
+        Based on the responses and the round context, provide insights that build on previous rounds."""
+        
+        if additional_instructions:
+            base_system_prompt += "\n\nAdditional instructions:\n" + "\n".join([f"- {inst}" for inst in additional_instructions])
+        
+        base_system_prompt += """
         Return a JSON response with the following structure:
-        {{
+        {
             "key_themes": ["theme1", "theme2"],
             "common_concerns": ["concern1", "concern2"],
             "suggested_actions": ["action1", "action2"],
@@ -379,7 +388,7 @@ Please analyze these responses and provide insights."""
             "common_values": ["shared principle1", "shared principle2"],
             "participant_sentiment": "overall sentiment",
             "summary": "comprehensive summary of findings for this round"
-        }}"""
+        }"""
         
         response_texts = [resp.get('content', '') for resp in responses]
         responses_text = "\n\n".join(response_texts)
@@ -391,7 +400,8 @@ Round {round_number} Responses:
 Please analyze these round-specific responses and provide insights."""
         
         try:
-            response = self.generate_response(prompt, system_prompt)
+            # Use temperature parameter in the generation if supported
+            response = self.generate_response(prompt, base_system_prompt)
             logger.info(f"[DEBUG] Ollama raw response for round {round_number}: {response}")
             
             fallback_structure = {
@@ -413,12 +423,13 @@ Please analyze these round-specific responses and provide insights."""
             logger.error(f"Round insights generation failed: {e}")
             return {"summary": f"Error in round insights generation: {e}"}
 
-    def generate_next_inquiries(self, synthesis_summary: str, previous_inquiries: List[str]) -> List[Dict[str, str]]:
+    def generate_next_inquiries(self, synthesis_summary: str, previous_inquiries: List[str], temperature: float = 0.7) -> List[Dict[str, str]]:
         """
         Generate new inquiries for the next round based on a synthesis of the previous one.
         Args:
             synthesis_summary: A summary of the previous round's discussion.
             previous_inquiries: A list of questions from the previous round.
+            temperature: Temperature for generation (0.0-1.0, higher = more creative)
         Returns:
             A list of new inquiries, each as a dictionary with 'title' and 'content'.
         """
