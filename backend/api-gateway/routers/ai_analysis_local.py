@@ -137,6 +137,15 @@ class SynthesisResponse(BaseModel):
     content: str
     summary: Optional[str] = None
     next_round_prompts: Optional[List[Dict[str, Any]]] = None
+    
+    # Analysis fields that match frontend expectations
+    key_themes: Optional[List[str]] = None
+    consensus_points: Optional[List[str]] = None
+    dialogue_opportunities: Optional[List[str]] = None
+    consensus_areas: Optional[List[str]] = None
+    divergent_perspectives: Optional[List[str]] = None
+    nuanced_positions: Optional[List[str]] = None
+    
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -293,7 +302,26 @@ async def get_synthesis_for_review(
     if not synthesis:
         raise HTTPException(status_code=404, detail="Synthesis for this round not found.")
 
-    return synthesis
+    # Explicitly construct the response to ensure all fields are included
+    response_data = SynthesisResponse(
+        id=str(synthesis.id),
+        event_id=str(synthesis.event_id),
+        round_number=synthesis.round_number,
+        title=synthesis.title,
+        content=synthesis.content,
+        summary=synthesis.summary,
+        next_round_prompts=synthesis.next_round_prompts,
+        key_themes=synthesis.key_themes,
+        consensus_points=synthesis.consensus_points,
+        dialogue_opportunities=synthesis.dialogue_opportunities,
+        consensus_areas=synthesis.consensus_areas,
+        divergent_perspectives=synthesis.divergent_perspectives,
+        nuanced_positions=synthesis.nuanced_positions,
+        created_at=synthesis.created_at,
+        updated_at=synthesis.updated_at
+    )
+    
+    return response_data
 
 
 @router.put("/ai/synthesis-review/{synthesis_id}", response_model=SynthesisResponse)
