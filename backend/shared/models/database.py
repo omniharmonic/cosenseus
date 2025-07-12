@@ -343,6 +343,11 @@ class Synthesis(Base):
     divergent_perspectives = Column(JSON, nullable=True)  # Areas of disagreement
     nuanced_positions = Column(JSON, nullable=True)  # Complex middle positions
     
+    # New analysis fields for enhanced insights
+    common_desired_outcomes = Column(JSON, nullable=True)  # Shared goals and aspirations
+    common_strategies = Column(JSON, nullable=True)  # Agreed-upon approaches and methods
+    common_values = Column(JSON, nullable=True)  # Shared principles and beliefs
+    
     # Quality metrics
     representativeness_score = Column(Float, nullable=True)
     participant_feedback_score = Column(Float, nullable=True)

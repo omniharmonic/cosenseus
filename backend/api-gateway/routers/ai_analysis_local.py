@@ -146,6 +146,11 @@ class SynthesisResponse(BaseModel):
     divergent_perspectives: Optional[List[str]] = None
     nuanced_positions: Optional[List[str]] = None
     
+    # New enhanced analysis fields
+    common_desired_outcomes: Optional[List[str]] = None
+    common_strategies: Optional[List[str]] = None
+    common_values: Optional[List[str]] = None
+    
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -317,6 +322,9 @@ async def get_synthesis_for_review(
         consensus_areas=synthesis.consensus_areas,
         divergent_perspectives=synthesis.divergent_perspectives,
         nuanced_positions=synthesis.nuanced_positions,
+        common_desired_outcomes=synthesis.common_desired_outcomes,
+        common_strategies=synthesis.common_strategies,
+        common_values=synthesis.common_values,
         created_at=synthesis.created_at,
         updated_at=synthesis.updated_at
     )

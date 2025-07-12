@@ -33,30 +33,24 @@ def get_local_network_origins():
     ]
     
     try:
-        # Get local IP address
+        # Get the machine's current IP address
         hostname = socket.gethostname()
         local_ip = socket.gethostbyname(hostname)
         origins.append(f"http://{local_ip}:3000")
         
-        # Add common local network ranges
-        network_ranges = [
-            "192.168.0.0/16",  # 192.168.x.x
-            "10.0.0.0/8",      # 10.x.x.x  
-            "172.16.0.0/12"    # 172.16.x.x - 172.31.x.x
-        ]
-        
-        for network_str in network_ranges:
-            network = ipaddress.IPv4Network(network_str, strict=False)
-            # Add a few common IPs from each range
-            for i in [1, 2, 100, 101, 254]:
-                try:
-                    test_ip = str(network.network_address + i)
-                    origins.append(f"http://{test_ip}:3000")
-                except:
-                    continue
-                    
+        # Try to get a more accurate local IP by connecting to a remote address
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            actual_local_ip = s.getsockname()[0]
+            s.close()
+            if actual_local_ip != local_ip:
+                origins.append(f"http://{actual_local_ip}:3000")
+        except:
+            pass
+            
     except Exception as e:
-        print(f"Warning: Could not determine local network IPs: {e}")
+        print(f"Warning: Could not determine local IP: {e}")
     
     return origins
 
@@ -88,10 +82,12 @@ app = FastAPI(
 # Add CORS middleware with local network support  
 local_origins = get_local_network_origins()
 print(f"🌐 CORS enabled for origins: {local_origins[:5]}... ({len(local_origins)} total)")
+print("🌐 Plus regex pattern for private networks")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=local_origins,
+    allow_origin_regex=r"http://(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):3000",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

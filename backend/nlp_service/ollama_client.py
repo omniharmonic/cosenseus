@@ -1,5 +1,6 @@
 import requests
 import json
+import re
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
@@ -18,6 +19,73 @@ class OllamaClient:
         self.model = model
         self.api_url = f"{base_url}/api"
         
+    def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
+        """
+        Robust JSON extraction from Ollama response with multiple fallback strategies.
+        
+        Args:
+            response: Raw response text from Ollama
+            
+        Returns:
+            Parsed JSON dict or None if parsing fails
+        """
+        if not response:
+            return None
+            
+        # Strategy 1: Try to parse the entire response as JSON
+        try:
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            pass
+            
+        # Strategy 2: Extract JSON from response using braces
+        try:
+            start = response.find("{")
+            end = response.rfind("}") + 1
+            if start != -1 and end > start:
+                json_str = response[start:end]
+                return json.loads(json_str)
+        except json.JSONDecodeError:
+            pass
+            
+        # Strategy 3: Use regex to find JSON-like content
+        try:
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response)
+            if json_match:
+                return json.loads(json_match.group())
+        except json.JSONDecodeError:
+            pass
+            
+        # Strategy 4: Try to clean the response and extract JSON
+        try:
+            # Remove common non-JSON prefixes and suffixes
+            cleaned = re.sub(r'^.*?(\{)', r'\1', response)
+            cleaned = re.sub(r'(\}).*?$', r'\1', cleaned)
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+            
+        logger.warning(f"Failed to extract JSON from response: {response[:200]}...")
+        return None
+    
+    def _extract_simple_json(self, response: str, fallback_structure: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract JSON with fallback to default structure.
+        
+        Args:
+            response: Raw response text
+            fallback_structure: Default structure to return if parsing fails
+            
+        Returns:
+            Parsed JSON or fallback structure
+        """
+        parsed = self._extract_json_from_response(response)
+        if parsed is not None:
+            return parsed
+        else:
+            logger.warning(f"Using fallback structure for response: {response[:100]}...")
+            return fallback_structure
+    
     def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Make a request to the Ollama API.
@@ -31,9 +99,13 @@ class OllamaClient:
         """
         try:
             url = f"{self.api_url}/{endpoint}"
-            response = requests.post(url, json=data, timeout=30)
+            # Use shorter timeout for stability
+            response = requests.post(url, json=data, timeout=15)
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Ollama API request timed out: {e}")
+            raise Exception(f"Ollama API request timed out after 15 seconds")
         except requests.exceptions.RequestException as e:
             logger.error(f"Ollama API request failed: {e}")
             raise Exception(f"Ollama API request failed: {e}")
@@ -87,19 +159,13 @@ class OllamaClient:
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            # Try to parse JSON from response
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                return json.loads(json_str)
-            else:
-                return {
-                    "sentiment": "neutral",
-                    "confidence": 0.5,
-                    "emotions": [],
-                    "summary": "Unable to parse sentiment analysis"
-                }
+            fallback_structure = {
+                "sentiment": "neutral",
+                "confidence": 0.5,
+                "emotions": [],
+                "summary": "Unable to parse sentiment analysis"
+            }
+            return self._extract_simple_json(response, fallback_structure)
         except Exception as e:
             logger.error(f"Sentiment analysis failed: {e}")
             return {
@@ -143,12 +209,10 @@ IMPORTANT: In the "response_indices" field, return the NUMBERS (1, 2, 3, etc.) c
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            # Try to parse JSON from response
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                parsed = json.loads(json_str)
+            fallback_structure = {"clusters": [], "overall_summary": "No clusters generated"}
+            parsed = self._extract_simple_json(response, fallback_structure)
+            
+            if parsed and "clusters" in parsed:
                 
                 # Add 2D coordinates for each response in each cluster
                 import math
@@ -235,6 +299,11 @@ IMPORTANT: In the "response_indices" field, return the NUMBERS (1, 2, 3, etc.) c
             "key_themes": ["theme1", "theme2"],
             "common_concerns": ["concern1", "concern2"],
             "suggested_actions": ["action1", "action2"],
+            "consensus_points": ["consensus1", "consensus2"],
+            "dialogue_opportunities": ["opportunity1", "opportunity2"],
+            "common_desired_outcomes": ["shared goal1", "shared goal2"],
+            "common_strategies": ["agreed approach1", "agreed approach2"],
+            "common_values": ["shared principle1", "shared principle2"],
             "participant_sentiment": "overall sentiment",
             "summary": "comprehensive summary of findings"
         }"""
@@ -261,20 +330,19 @@ Please analyze these responses and provide insights."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            # Try to parse JSON from response
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                return json.loads(json_str)
-            else:
-                return {
-                    "key_themes": [],
-                    "common_concerns": [],
-                    "suggested_actions": [],
-                    "participant_sentiment": "neutral",
-                    "summary": "Unable to parse analysis results"
-                }
+            fallback_structure = {
+                "key_themes": [],
+                "common_concerns": [],
+                "suggested_actions": [],
+                "consensus_points": [],
+                "dialogue_opportunities": [],
+                "common_desired_outcomes": [],
+                "common_strategies": [],
+                "common_values": [],
+                "participant_sentiment": "neutral",
+                "summary": "Unable to parse analysis results"
+            }
+            return self._extract_simple_json(response, fallback_structure)
         except Exception as e:
             logger.error(f"Insights generation failed: {e}")
             return {
@@ -306,6 +374,9 @@ Please analyze these responses and provide insights."""
             "suggested_actions": ["action1", "action2"],
             "consensus_points": ["consensus1", "consensus2"],
             "dialogue_opportunities": ["opportunity1", "opportunity2"],
+            "common_desired_outcomes": ["shared goal1", "shared goal2"],
+            "common_strategies": ["agreed approach1", "agreed approach2"],
+            "common_values": ["shared principle1", "shared principle2"],
             "participant_sentiment": "overall sentiment",
             "summary": "comprehensive summary of findings for this round"
         }}"""
@@ -323,16 +394,21 @@ Please analyze these round-specific responses and provide insights."""
             response = self.generate_response(prompt, system_prompt)
             logger.info(f"[DEBUG] Ollama raw response for round {round_number}: {response}")
             
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                parsed_result = json.loads(json_str)
-                logger.info(f"[DEBUG] Parsed analysis result: {parsed_result}")
-                return parsed_result
-            else:
-                logger.warning(f"[DEBUG] No valid JSON found in response: {response}")
-                return {"summary": "Unable to parse round analysis"}
+            fallback_structure = {
+                "key_themes": [],
+                "common_concerns": [],
+                "suggested_actions": [],
+                "consensus_points": [],
+                "dialogue_opportunities": [],
+                "common_desired_outcomes": [],
+                "common_strategies": [],
+                "common_values": [],
+                "participant_sentiment": "neutral",
+                "summary": "Unable to parse round analysis"
+            }
+            parsed_result = self._extract_simple_json(response, fallback_structure)
+            logger.info(f"[DEBUG] Parsed analysis result: {parsed_result}")
+            return parsed_result
         except Exception as e:
             logger.error(f"Round insights generation failed: {e}")
             return {"summary": f"Error in round insights generation: {e}"}
@@ -375,20 +451,15 @@ Please generate the next set of inquiries."""
 
         try:
             response_str = self.generate_response(prompt, system_prompt)
-            if "{" in response_str and "}" in response_str:
-                start = response_str.find("{")
-                end = response_str.rfind("}") + 1
-                json_str = response_str[start:end]
-                parsed_json = json.loads(json_str)
-                # Ensure the response is a list of dicts with the correct keys
-                inquiries = parsed_json.get("inquiries", [])
-                if isinstance(inquiries, list) and all("title" in i and "content" in i for i in inquiries):
-                    return inquiries
-                else:
-                    logger.warning(f"Ollama returned malformed inquiries: {inquiries}")
-                    return []
+            fallback_structure = {"inquiries": []}
+            parsed_json = self._extract_simple_json(response_str, fallback_structure)
+            
+            # Ensure the response is a list of dicts with the correct keys
+            inquiries = parsed_json.get("inquiries", [])
+            if isinstance(inquiries, list) and all("title" in i and "content" in i for i in inquiries):
+                return inquiries
             else:
-                logger.warning(f"Ollama did not return valid JSON for inquiries: {response_str}")
+                logger.warning(f"Ollama returned malformed inquiries: {inquiries}")
                 return []
         except Exception as e:
             logger.error(f"Failed to generate next inquiries: {e}")
@@ -439,18 +510,8 @@ Please generate the next set of inquiries."""
         prompt = f"Extract keywords from these responses:\n{responses_text}"
         try:
             response = self.generate_response(prompt, system_prompt)
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                try:
-                    return json.loads(json_str)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Keyword extraction failed to parse JSON: {e}. Response: {response}")
-                    return {"keywords": []}
-            else:
-                logger.warning(f"Ollama did not return valid JSON for keywords: {response}")
-                return {"keywords": []}
+            fallback_structure = {"keywords": []}
+            return self._extract_simple_json(response, fallback_structure)
         except Exception as e:
             logger.error(f"Keyword extraction failed: {e}")
             return {"keywords": []}
@@ -470,13 +531,8 @@ Please generate the next set of inquiries."""
         prompt = f"Detect consensus in these responses:\n{responses_text}"
         try:
             response = self.generate_response(prompt, system_prompt)
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                return json.loads(json_str)
-            else:
-                return {"consensus_clusters": [], "summary": "Unable to parse consensus results"}
+            fallback_structure = {"consensus_clusters": [], "summary": "Unable to parse consensus results"}
+            return self._extract_simple_json(response, fallback_structure)
         except Exception as e:
             logger.error(f"Consensus detection failed: {e}")
             return {"consensus_clusters": [], "summary": f"Error in consensus detection: {e}"}
@@ -513,26 +569,21 @@ Please generate the next set of inquiries."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                parsed_result = json.loads(json_str)
-                statements = parsed_result.get("statements", [])
-                # Ensure we have a reasonable number of statements
-                if len(statements) > 10:
-                    statements = statements[:10]
-                elif len(statements) < 3:
-                    # Generate some default statements if too few
-                    statements.extend([
-                        "This issue affects our community",
-                        "Action is needed to address this concern",
-                        "Multiple perspectives should be considered"
-                    ])
-                return {"statements": statements}
-            else:
-                logger.warning(f"No valid JSON found in statement extraction: {response}")
-                return {"statements": ["Unable to extract statements"]}
+            fallback_structure = {"statements": ["Unable to extract statements"]}
+            parsed_result = self._extract_simple_json(response, fallback_structure)
+            
+            statements = parsed_result.get("statements", [])
+            # Ensure we have a reasonable number of statements
+            if len(statements) > 10:
+                statements = statements[:10]
+            elif len(statements) < 3:
+                # Generate some default statements if too few
+                statements.extend([
+                    "This issue affects our community",
+                    "Action is needed to address this concern",
+                    "Multiple perspectives should be considered"
+                ])
+            return {"statements": statements}
         except Exception as e:
             logger.error(f"Statement extraction failed: {e}")
             return {"statements": ["Error extracting statements"]}
@@ -578,27 +629,21 @@ For each statement, determine if the response agrees, disagrees, or passes."""
         
         try:
             response = self.generate_response(prompt, system_prompt)
-            if "{" in response and "}" in response:
-                start = response.find("{")
-                end = response.rfind("}") + 1
-                json_str = response[start:end]
-                parsed_result = json.loads(json_str)
-                mapping = parsed_result.get("mapping", [])
-                
-                # Ensure all statements are covered
-                covered_statements = {m.get("statement", "") for m in mapping}
-                for statement in statements:
-                    if statement not in covered_statements:
-                        mapping.append({
-                            "statement": statement,
-                            "position": "pass"
-                        })
-                
-                return {"mapping": mapping}
-            else:
-                logger.warning(f"No valid JSON found in response mapping: {response}")
-                # Return default pass mapping for all statements
-                return {"mapping": [{"statement": stmt, "position": "pass"} for stmt in statements]}
+            fallback_structure = {"mapping": [{"statement": stmt, "position": "pass"} for stmt in statements]}
+            parsed_result = self._extract_simple_json(response, fallback_structure)
+            
+            mapping = parsed_result.get("mapping", [])
+            
+            # Ensure all statements are covered
+            covered_statements = {m.get("statement", "") for m in mapping}
+            for statement in statements:
+                if statement not in covered_statements:
+                    mapping.append({
+                        "statement": statement,
+                        "position": "pass"
+                    })
+            
+            return {"mapping": mapping}
         except Exception as e:
             logger.error(f"Response mapping failed: {e}")
             # Return default pass mapping for all statements
