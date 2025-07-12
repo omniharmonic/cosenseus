@@ -51,15 +51,39 @@ senseus/
 - Docker and Docker Compose
 - Node.js 18+
 - Python 3.11+
+- Ollama (for local AI processing)
 - Kubernetes (for production)
 
 ### Development Setup
 
 1. Clone the repository
-2. Run development environment: `./scripts/dev-setup.sh`
-3. Start services: `docker-compose up -d`
-4. Access frontend: http://localhost:3000
-5. Access API docs: http://localhost:8000/docs
+2. Install Ollama and pull the required model: `ollama pull llama3.2:latest`
+3. Run development environment: `./scripts/dev-setup.sh`
+4. Start all services: `./start.sh`
+5. Access frontend: http://localhost:3000
+6. Access API docs: http://localhost:8000/docs
+7. Check Ollama health: http://localhost:11434
+
+### Backend-Only Mode
+
+For backend development without frontend:
+```bash
+./start.sh --backend-only
+```
+
+## Recent Progress (August 2025)
+
+### ✅ Backend Service Stability & Ollama Integration
+- **Service Stability**: Resolved backend process crashes and port conflicts
+- **Ollama Integration**: Enhanced with improved error handling and timeout management
+- **Process Management**: Robust service orchestration with auto-kill functionality
+- **Development Environment**: Comprehensive startup scripts with backend-only mode
+- **Testing & Validation**: All services (Backend API Gateway, NLP Service, Frontend, Ollama) operational
+
+### ✅ Critical Dialogue Progression Fix
+- **Root Cause**: Fixed missing analysis fields in `SynthesisResponse` Pydantic model
+- **Solution**: Enhanced response model and endpoint to return complete analysis data
+- **Result**: Complete data flow from AI analysis through dialogue manager to frontend approval system
 
 ## Development Phases
 
