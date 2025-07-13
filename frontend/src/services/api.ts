@@ -237,7 +237,7 @@ class ApiService {
     return this.request(`/events/${eventId}/advance-round`, { method: 'POST' });
   }
 
-  // Dialogue Moderation - FORCED UPDATE
+  // Dialogue Moderation - Fixed API endpoints
   async getSynthesisForReview(eventId: string, roundNumber: number): Promise<ApiResponse<any>> {
     return this.request(`/ai/synthesis-review/${eventId}/${roundNumber}`);
   }

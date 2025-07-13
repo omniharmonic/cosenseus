@@ -299,9 +299,11 @@ async def get_synthesis_for_review(
             detail=f"Round is not in review state. Current state: {event_round.status.value}"
         )
 
+    # When in admin_review, we need the synthesis from the previous round
+    synthesis_round = round_number - 1 if round_number > 1 else round_number
     synthesis = db.query(Synthesis).filter(
         Synthesis.event_id == event_id,
-        Synthesis.round_number == round_number
+        Synthesis.round_number == synthesis_round
     ).order_by(Synthesis.created_at.desc()).first()
 
     if not synthesis:

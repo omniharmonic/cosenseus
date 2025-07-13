@@ -173,8 +173,7 @@ mkdir -p "$PROJECT_ROOT/logs"
 # Start NLP service first (it's needed by the backend)
 print_status "Starting NLP service..."
 cd "$PROJECT_ROOT/backend/nlp_service"
-source ../venv/bin/activate
-python main.py > "$PROJECT_ROOT/logs/nlp_service.log" 2>&1 &
+../venv/bin/python main.py > "$PROJECT_ROOT/logs/nlp_service.log" 2>&1 &
 NLP_PID=$!
 print_success "NLP service started (PID: $NLP_PID)"
 
@@ -184,8 +183,7 @@ wait_for_service "http://localhost:8003/health" "NLP Service"
 # Start backend
 print_status "Starting backend API gateway..."
 cd "$PROJECT_ROOT/backend/api-gateway"
-source ../venv/bin/activate
-python main_local.py > "$PROJECT_ROOT/logs/backend.log" 2>&1 &
+../venv/bin/python main_local.py > "$PROJECT_ROOT/logs/backend.log" 2>&1 &
 BACKEND_PID=$!
 print_success "Backend started (PID: $BACKEND_PID)"
 

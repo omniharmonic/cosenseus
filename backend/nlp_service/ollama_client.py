@@ -48,19 +48,28 @@ class OllamaClient:
         except json.JSONDecodeError:
             pass
             
-        # Strategy 3: Use regex to find JSON-like content
+        # Strategy 3: Extract JSON from markdown code blocks
         try:
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response)
+            # Look for JSON in markdown code blocks
+            code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+            if code_block_match:
+                return json.loads(code_block_match.group(1))
+        except json.JSONDecodeError:
+            pass
+            
+        # Strategy 4: Use regex to find JSON-like content
+        try:
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
         except json.JSONDecodeError:
             pass
             
-        # Strategy 4: Try to clean the response and extract JSON
+        # Strategy 5: Try to clean the response and extract JSON
         try:
             # Remove common non-JSON prefixes and suffixes
-            cleaned = re.sub(r'^.*?(\{)', r'\1', response)
-            cleaned = re.sub(r'(\}).*?$', r'\1', cleaned)
+            cleaned = re.sub(r'^.*?(\{)', r'\1', response, flags=re.DOTALL)
+            cleaned = re.sub(r'(\}).*?$', r'\1', cleaned, flags=re.DOTALL)
             return json.loads(cleaned)
         except json.JSONDecodeError:
             pass

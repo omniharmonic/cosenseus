@@ -483,11 +483,11 @@ async def advance_to_next_round(
                     )
                     local_db.add(new_inquiry)
 
-                # Create the next round
+                # Create the next round for admin review
                 next_event_round = EventRound(
                     event_id=event_id,
                     round_number=next_round_number,
-                    status=EventRoundStatus.WAITING_FOR_RESPONSES,
+                    status=EventRoundStatus.ADMIN_REVIEW,
                 )
                 local_db.add(next_event_round)
 
@@ -521,13 +521,15 @@ def get_synthesis_for_review(event_id: str, db: Session = Depends(get_local_db))
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
+    # When in admin_review, we need the synthesis from the previous round
+    synthesis_round = event.current_round - 1 if event.current_round > 1 else event.current_round
     synthesis = db.query(Synthesis).filter(
         Synthesis.event_id == event_id,
-        Synthesis.round_number == event.current_round
+        Synthesis.round_number == synthesis_round
     ).order_by(Synthesis.created_at.desc()).first()
 
     if not synthesis:
-        raise HTTPException(status_code=404, detail="Synthesis for the current round not found.")
+        raise HTTPException(status_code=404, detail=f"Synthesis for round {synthesis_round} not found.")
 
     return {
         "round_number": synthesis.round_number,
@@ -757,8 +759,8 @@ async def end_dialogue(
     if str(event.organizer_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Only the event organizer can end the dialogue")
     
-    # Update event status to completed
-    event.status = EventStatus.COMPLETED
+    # Update event status to closed
+    event.status = EventStatus.CLOSED
     event.end_time = datetime.now(timezone.utc)
     event.updated_at = datetime.now(timezone.utc)
     
