@@ -309,9 +309,9 @@ const EventDetails: React.FC<EventDetailsProps> = ({
       if (response.ok) {
         const result = await response.json();
         setEvent(prev => prev ? { ...prev, status: 'completed' } : null);
-        setShowExportModal(true);
-        // Show success notification
-        alert(`Dialogue ended successfully! Final round: ${result.final_round}`);
+        
+        // Show success notification but don't auto-open export modal
+        alert(`Dialogue ended successfully! Results are ready for export. Final round: ${result.final_round}`);
       } else {
         const errorData = await response.json();
         alert(`Failed to end dialogue: ${errorData.detail || 'Unknown error'}`);

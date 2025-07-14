@@ -552,6 +552,14 @@ def approve_synthesis_and_advance(
 
     next_round_number = event.current_round + 1
 
+    # Delete existing inquiries for this round to prevent duplicates
+    existing_inquiries = db.query(Inquiry).filter(
+        Inquiry.event_id == event.id,
+        Inquiry.round_number == next_round_number
+    ).all()
+    for inquiry in existing_inquiries:
+        db.delete(inquiry)
+
     # Create new inquiries from the approved prompts
     for i, prompt_data in enumerate(payload.prompts):
         new_inquiry = Inquiry(

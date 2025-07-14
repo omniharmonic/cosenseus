@@ -139,6 +139,62 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
     }
   };
 
+  const handleRegenerateIndividualPrompt = async (promptIndex: number) => {
+    if (!synthesis) return;
+    setIsRegenerating(true);
+    
+    try {
+      const sessionCode = localStorage.getItem('cosenseus_session_code');
+      const response = await fetch(`/api/v1/ai/synthesis-review/${synthesis.id}/regenerate-prompt/${promptIndex}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Code': sessionCode || ''
+        },
+        body: JSON.stringify(regenerateParams)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update the specific prompt in the editable prompts
+        const newPrompts = [...editablePrompts];
+        const newPrompt = result.new_prompt;
+        newPrompts[promptIndex] = {
+          ...newPrompts[promptIndex],
+          title: newPrompt.title || newPrompts[promptIndex].title,
+          content: newPrompt.content || newPrompt,
+          regenerated: true
+        };
+        setEditablePrompts(newPrompts);
+        
+        // Update synthesis with the new prompts list
+        setSynthesis({
+          ...synthesis,
+          next_round_prompts: result.updated_prompts
+        });
+        
+        const successMessage = result.warning 
+          ? `Prompt ${promptIndex + 1} regenerated (template used due to AI unavailability)`
+          : `Prompt ${promptIndex + 1} regenerated successfully!`;
+        
+        showNotification(successMessage, result.warning ? 'info' : 'success');
+        setError(null);
+      } else {
+        const errorData = await response.json();
+        const errorMsg = errorData.detail || 'Failed to regenerate prompt';
+        setError(errorMsg);
+        showNotification(errorMsg, 'error');
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to regenerate prompt';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   const addFocusArea = () => {
     if (focusAreaInput.trim() && !regenerateParams.focus_areas.includes(focusAreaInput.trim())) {
       setRegenerateParams(prev => ({
@@ -292,9 +348,19 @@ const DialogueModeration: React.FC<DialogueModerationProps> = ({ eventId, roundN
                   {isSaving ? 'Saving...' : 'Save'}
                 </button>
               ) : (
-                <button onClick={() => setEditingPromptIndex(index)} className="btn btn-secondary prompt-button edit">
-                  Edit
-                </button>
+                <>
+                  <button onClick={() => setEditingPromptIndex(index)} className="btn btn-secondary prompt-button edit">
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleRegenerateIndividualPrompt(index)} 
+                    className="btn btn-tertiary prompt-button regenerate-individual"
+                    disabled={isRegenerating || isSaving}
+                    title="Regenerate this prompt only"
+                  >
+                    🔄
+                  </button>
+                </>
               )}
             </div>
           </div>

@@ -562,6 +562,157 @@ async def regenerate_synthesis_prompts(
         raise HTTPException(status_code=500, detail=f"Prompt regeneration failed: {str(e)}")
 
 
+@router.post("/ai/synthesis-review/{synthesis_id}/regenerate-prompt/{prompt_index}")
+async def regenerate_individual_prompt(
+    synthesis_id: str,
+    prompt_index: int,
+    request: RegeneratePromptsRequest,
+    db: Session = Depends(get_local_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Regenerate a single prompt at the specified index while preserving others.
+    """
+    # Verify the user is the event organizer
+    synthesis = db.query(Synthesis).options(
+        joinedload(Synthesis.event)
+    ).filter(Synthesis.id == synthesis_id).first()
+
+    if not synthesis:
+        raise HTTPException(status_code=404, detail="Synthesis not found")
+
+    if synthesis.event.organizer_id != current_user.get("user_id"):
+        raise HTTPException(status_code=403, detail="Only the event organizer can regenerate prompts")
+
+    # Validate prompt index
+    current_prompts = synthesis.next_round_prompts or []
+    if prompt_index < 0 or prompt_index >= len(current_prompts):
+        raise HTTPException(status_code=400, detail=f"Invalid prompt index: {prompt_index}")
+
+    try:
+        # Map creativity level to temperature
+        temperature_map = {
+            "conservative": 0.3,
+            "moderate": 0.7,
+            "creative": 0.9
+        }
+        temperature = temperature_map.get(request.creativity, 0.7)
+
+        # Build additional instructions for individual prompt
+        additional_instructions = []
+        if request.tone:
+            tone_instructions = {
+                "analytical": "Focus on analytical and data-driven questions",
+                "engaging": "Create engaging and thought-provoking questions", 
+                "challenging": "Develop challenging questions that push thinking"
+            }
+            additional_instructions.append(tone_instructions.get(request.tone, ""))
+
+        if request.length:
+            length_instructions = {
+                "brief": "Keep questions concise and focused",
+                "standard": "Use standard length questions with clear context",
+                "detailed": "Provide detailed, comprehensive questions with background"
+            }
+            additional_instructions.append(length_instructions.get(request.length, ""))
+
+        if request.focus_areas:
+            additional_instructions.append(f"Focus on these specific areas: {', '.join(request.focus_areas)}")
+
+        # Get the synthesis summary for context
+        synthesis_summary = synthesis.summary or "Previous round discussion"
+
+        # Use the previous inquiries for context
+        previous_inquiries = []
+        if synthesis.round_number > 1:
+            prev_inquiries = db.query(Inquiry).filter(
+                Inquiry.event_id == synthesis.event_id,
+                Inquiry.round_number == synthesis.round_number
+            ).all()
+            previous_inquiries = [inq.question_text for inq in prev_inquiries]
+
+        try:
+            # Generate a single new prompt using Ollama
+            new_prompts = ollama_client.generate_next_inquiries(
+                synthesis_summary, 
+                previous_inquiries, 
+                temperature=temperature
+            )
+            
+            if new_prompts and len(new_prompts) > 0:
+                # Take the first generated prompt as replacement
+                new_prompt = new_prompts[0]
+                
+                # Create updated prompts list with the new prompt at the specified index
+                updated_prompts = current_prompts.copy()
+                updated_prompts[prompt_index] = new_prompt
+                
+                # Update the synthesis with the new prompt
+                synthesis.next_round_prompts = updated_prompts
+                synthesis.updated_at = datetime.now(timezone.utc)
+                
+                # Track the regeneration
+                if not synthesis.regeneration_history:
+                    synthesis.regeneration_history = []
+                
+                synthesis.regeneration_history.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "type": "individual_prompt",
+                    "prompt_index": prompt_index,
+                    "user_id": current_user.get("user_id"),
+                    "parameters": {
+                        "creativity": request.creativity,
+                        "tone": request.tone,
+                        "length": request.length,
+                        "focus_areas": request.focus_areas
+                    }
+                })
+                
+                db.commit()
+                
+                return {
+                    "success": True,
+                    "message": f"Prompt {prompt_index + 1} regenerated successfully",
+                    "prompt_index": prompt_index,
+                    "new_prompt": new_prompt,
+                    "updated_prompts": updated_prompts
+                }
+            else:
+                raise Exception("No prompts generated by AI")
+                
+        except Exception as ai_error:
+            # Fallback: generate a template-based prompt
+            template_prompts = [
+                {"title": "Exploring Solutions", "content": "Based on our previous discussion, what potential solutions or new approaches should we explore?"},
+                {"title": "Building Consensus", "content": "What areas of agreement can we identify and build upon from our dialogue so far?"},
+                {"title": "Addressing Challenges", "content": "What key challenges or concerns need to be addressed as we move forward?"}
+            ]
+            
+            fallback_prompt = template_prompts[prompt_index % len(template_prompts)]
+            
+            # Update with fallback prompt
+            updated_prompts = current_prompts.copy()
+            updated_prompts[prompt_index] = fallback_prompt
+            
+            synthesis.next_round_prompts = updated_prompts
+            synthesis.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            
+            return {
+                "success": True,
+                "message": f"Prompt {prompt_index + 1} regenerated with template (AI unavailable)",
+                "prompt_index": prompt_index,
+                "new_prompt": fallback_prompt,
+                "updated_prompts": updated_prompts,
+                "warning": "Used template prompt due to AI service unavailability"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Individual prompt regeneration failed: {str(e)}")
+
+
 @router.post("/ai/synthesis-review/{synthesis_id}/approve", response_model=SynthesisResponse)
 async def approve_synthesis_review(
     synthesis_id: str,
@@ -593,6 +744,15 @@ async def approve_synthesis_review(
 
     # 2. Create inquiries for the NEXT round
     next_round_number = synthesis.round_number + 1
+    
+    # Delete existing inquiries for this round to prevent duplicates
+    existing_inquiries = db.query(Inquiry).filter(
+        Inquiry.event_id == synthesis.event_id,
+        Inquiry.round_number == next_round_number
+    ).all()
+    for inquiry in existing_inquiries:
+        db.delete(inquiry)
+    
     new_inquiries = []
     for i, prompt in enumerate(synthesis.next_round_prompts):
         new_inquiry = Inquiry(
