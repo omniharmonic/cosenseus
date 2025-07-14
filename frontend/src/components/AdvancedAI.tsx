@@ -50,6 +50,9 @@ interface AnalysisResults {
   entities: CivicEntity[];
   consensus_areas: string[];
   dialogue_opportunities: string[];
+  common_desired_outcomes?: string[];
+  common_values?: string[];
+  common_strategies?: string[];
   sentiment_trends: any[];
 }
 
@@ -135,6 +138,9 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
         entities: aiAnalysis.key_entities || [],
         consensus_areas: aiAnalysis.key_themes || [],
         dialogue_opportunities: aiAnalysis.suggested_actions || [],
+        common_desired_outcomes: aiAnalysis.common_desired_outcomes || [],
+        common_values: aiAnalysis.common_values || [],
+        common_strategies: aiAnalysis.common_strategies || [],
         sentiment_trends: aiSummary.sentiment_over_time || []
       };
 
@@ -420,7 +426,7 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
             {selectedAnalysis === 'consensus' && (
               <div className="consensus-view">
                 <div className="consensus-areas">
-                  <h4>Areas of Consensus</h4>
+                  <h4>Consensus</h4>
                   <div className="consensus-list">
                     {analysisResults.consensus_areas.map((area, index) => (
                       <div key={index} className="consensus-item">
@@ -432,16 +438,44 @@ const AdvancedAI: React.FC<AdvancedAIProps> = ({
                 </div>
                 
                 <div className="dialogue-opportunities">
-                  <h4>Dialogue Opportunities</h4>
+                  <h4>Common Desired Outcomes</h4>
                   <div className="opportunities-list">
-                    {analysisResults.dialogue_opportunities.map((opportunity, index) => (
+                    {(analysisResults.common_desired_outcomes || analysisResults.dialogue_opportunities).map((outcome, index) => (
                       <div key={index} className="opportunity-item">
-                        <span className="opportunity-icon">🤝</span>
-                        <span className="opportunity-text">{opportunity}</span>
+                        <span className="opportunity-icon">💡</span>
+                        <span className="opportunity-text">{outcome}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+                
+                {analysisResults.common_values && analysisResults.common_values.length > 0 && (
+                  <div className="common-values">
+                    <h4>Common Values</h4>
+                    <div className="values-list">
+                      {analysisResults.common_values.map((value, index) => (
+                        <div key={index} className="value-item">
+                          <span className="value-icon">🌟</span>
+                          <span className="value-text">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {analysisResults.common_strategies && analysisResults.common_strategies.length > 0 && (
+                  <div className="common-strategies">
+                    <h4>Common Strategies</h4>
+                    <div className="strategies-list">
+                      {analysisResults.common_strategies.map((strategy, index) => (
+                        <div key={index} className="strategy-item">
+                          <span className="strategy-icon">📋</span>
+                          <span className="strategy-text">{strategy}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="sentiment-trends">
                   <h4>Sentiment Evolution</h4>

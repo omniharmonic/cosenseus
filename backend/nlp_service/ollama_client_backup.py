@@ -1,10 +1,11 @@
 import requests
 import json
 import re
-import hashlib
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
+import asyncio
+import hashlib
 import time
 from threading import Semaphore
 
@@ -15,22 +16,18 @@ logger = logging.getLogger(__name__)
 class OllamaClient:
     """
     Client for interacting with Ollama for local AI analysis.
-    Simplified for reliability and stability.
+    Enhanced with request queuing, caching, and better error handling.
     """
     
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2:3b"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2:latest"):
         self.base_url = base_url
-        self.model = model  # Use smaller 3b model for stability
+        self.model = model
         self.api_url = f"{base_url}/api"
-        self.timeout = 60  # Longer timeout for stability
-        self.max_retries = 1  # Reduce retries to avoid overload
         
-        # Simple caching system
-        self.cache = {}
-        self.cache_ttl = 300  # 5 minutes
-        
-        # Request management - limit concurrent requests for stability
-        self.semaphore = Semaphore(1)  # Only 1 concurrent request for stability
+        # Request management
+        self.semaphore = Semaphore(2)  # Allow max 2 concurrent requests
+        self.cache = {}  # Simple in-memory cache
+        self.cache_ttl = 300  # 5 minutes cache TTL
         
     def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
         """

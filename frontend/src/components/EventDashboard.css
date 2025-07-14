@@ -206,6 +206,7 @@
   gap: var(--spacing-unit-4); /* Increase gap between main action buttons */
   align-items: center;
   flex-wrap: wrap; /* Prevent overflow */
+  justify-content: flex-end; /* Right align buttons */
 }
 
 /* event-links and link-btn should now use .btn and .btn-secondary classes */

@@ -773,9 +773,15 @@ async def sentiment_timeline(event_id: str, db: Session = Depends(get_local_db))
         responses = responses_result.fetchall()
         if not responses:
             return {"event_id": event_id, "timeline": []}
+        
+        # Extract response texts for batch processing
+        response_texts = [response.content for response in responses]
+        
+        # Use batch sentiment analysis for efficiency
+        sentiment_results = ollama_client.analyze_sentiment_batch(response_texts)
+        
         timeline = []
-        for response in responses:
-            content = response.content
+        for i, response in enumerate(responses):
             created_at = response.created_at
             if isinstance(created_at, str):
                 created_at_str = created_at
@@ -783,7 +789,15 @@ async def sentiment_timeline(event_id: str, db: Session = Depends(get_local_db))
                 created_at_str = created_at.isoformat()
             else:
                 created_at_str = str(created_at) if created_at else None
-            sentiment = ollama_client.analyze_sentiment(content)
+            
+            # Get sentiment result for this response
+            sentiment = sentiment_results[i] if i < len(sentiment_results) else {
+                "sentiment": "neutral",
+                "confidence": 0.0,
+                "emotions": [],
+                "summary": "Analysis not available"
+            }
+            
             timeline.append({
                 "response_id": response.id,
                 "created_at": created_at_str,

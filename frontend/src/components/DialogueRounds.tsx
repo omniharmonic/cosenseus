@@ -18,6 +18,9 @@ interface RoundAnalysis {
   key_themes: string[];
   consensus_points: string[];
   dialogue_opportunities: string[];
+  common_desired_outcomes?: string[];
+  common_values?: string[];
+  common_strategies?: string[];
   participant_count: number;
   created_at: string;
   analysis?: any;
@@ -50,7 +53,6 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDetails, setEventDetails] = useState<any>(null);
-  const [feedback, setFeedback] = useState<string>('');
   const [pollInterval, setPollInterval] = useState(10000); // Start with 10 seconds
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [isWaitingForNextRound, setIsWaitingForNextRound] = useState(false);
@@ -255,6 +257,9 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
         key_themes: analysisResponse.data.analysis?.key_themes || [],
         consensus_points: analysisResponse.data.analysis?.consensus_points || [],
         dialogue_opportunities: analysisResponse.data.analysis?.dialogue_opportunities || [],
+        common_desired_outcomes: analysisResponse.data.analysis?.common_desired_outcomes || [],
+        common_values: analysisResponse.data.analysis?.common_values || [],
+        common_strategies: analysisResponse.data.analysis?.common_strategies || [],
         participant_count: analysisResponse.data.response_count || 0,
         created_at: analysisResponse.data.timestamp || new Date().toISOString(),
         analysis: analysisResponse.data.analysis,
@@ -270,33 +275,12 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     }
   };
 
-  const submitFeedback = async (inquiryId: string) => {
-    if (!feedback.trim()) return;
-    try {
-      const feedbackResponse = await apiService.submitRoundResponses([{
-        inquiry_id: inquiryId,
-        content: feedback,
-        is_anonymous: false,
-        round_number: currentRound
-      }]);
-      if (feedbackResponse.error) {
-        setError(feedbackResponse.error);
-        return;
-      }
-      setFeedback('');
-      alert('Feedback submitted successfully!');
-    } catch (err) {
-      setError('Error submitting feedback');
-      console.error('Error submitting feedback:', err);
-    }
-  };
 
   const advanceRound = async () => {
     try {
       await fetch(`/api/v1/events/${eventId}/advance-round`, { method: 'POST' });
       await fetchRoundState();
       setResponses({});
-      setFeedback('');
       setError(null);
     } catch (err) {
       setError('Error advancing round');
@@ -467,7 +451,7 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
                   </ul>
                 </div>
                 <div className="analysis-card">
-                  <h3>🤝 Areas of Agreement</h3>
+                  <h3>🤝 Consensus</h3>
                   <ul>
                     {currentAnalysis.consensus_points.map((point, index) => (
                       <li key={index}>{point}</li>
@@ -475,13 +459,33 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
                   </ul>
                 </div>
                 <div className="analysis-card">
-                  <h3>💡 Next Steps</h3>
+                  <h3>💡 Common Desired Outcomes</h3>
                   <ul>
-                    {currentAnalysis.dialogue_opportunities.map((opportunity, index) => (
-                      <li key={index}>{opportunity}</li>
+                    {(currentAnalysis.common_desired_outcomes || currentAnalysis.dialogue_opportunities).map((outcome, index) => (
+                      <li key={index}>{outcome}</li>
                     ))}
                   </ul>
                 </div>
+                {currentAnalysis.common_values && currentAnalysis.common_values.length > 0 && (
+                  <div className="analysis-card">
+                    <h3>🌟 Common Values</h3>
+                    <ul>
+                      {currentAnalysis.common_values.map((value, index) => (
+                        <li key={index}>{value}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {currentAnalysis.common_strategies && currentAnalysis.common_strategies.length > 0 && (
+                  <div className="analysis-card">
+                    <h3>📋 Common Strategies</h3>
+                    <ul>
+                      {currentAnalysis.common_strategies.map((strategy, index) => (
+                        <li key={index}>{strategy}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               
               {/* Opinion Cluster Map from Polis-style analysis */}
@@ -546,21 +550,6 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
           
           {/* Action buttons */}
           <div className="rounds-footer">
-            <div className="feedback-section">
-              <textarea 
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Provide feedback on the analysis or suggest a direction for the next round..."
-              />
-              <button 
-                className="btn btn-secondary"
-                onClick={() => submitFeedback('feedback-inquiry-id')} // Replace with a real inquiry ID if available
-                disabled={!feedback.trim()}
-              >
-                Submit Feedback
-              </button>
-            </div>
-
             <div className="rounds-actions">
               {isParticipant && roundStatus === 'waiting_for_responses' && (
                 <>
