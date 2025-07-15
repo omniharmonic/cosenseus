@@ -192,4 +192,19 @@ debug_startup.log
 
 # Local data
 local_data/
-census_local.db 
+census_local.db
+
+# Cursor IDE and development docs
+.cursor/
+.cursor/docs/
+.cursor/tools/
+.cursor/rules/
+
+# Testing and development documents
+*_TEST_RESULTS.md
+*_PROGRESS.md
+*_SUMMARY.md
+*_CHECKLIST.md
+*_UPDATE.md
+test_*.py
+create_test_*.py 
