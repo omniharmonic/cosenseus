@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 import uuid
 
-from core.database_local import get_local_db, LocalSessionLocal
+from core.database_local import get_local_db, LocalSessionLocal, LOCAL_DB_PATH
 from shared.models.database import TemporaryUser
 
 router = APIRouter()
@@ -107,6 +107,9 @@ def create_session(request: CreateSessionRequest):
         return TemporaryUserResponse.from_orm(new_user)
     except Exception as e:
         db.rollback()
+        print(f"❌ Session creation failed: {str(e)}")
+        print(f"💻 Database path: {LOCAL_DB_PATH}")
+        print(f"🔍 Database accessible: {LOCAL_DB_PATH.exists()}")
         raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
     finally:
         db.close()

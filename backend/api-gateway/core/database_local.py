@@ -14,8 +14,8 @@ from shared.models.database import (
 )
 
 # Define the path to the local database file
-# It's placed in the project root's `local_data` directory
-LOCAL_DB_PATH = Path(__file__).parent.parent.parent.parent / "local_data" / "cosenseus_local.db"
+# Use local system directory to avoid iCloud Drive sync conflicts
+LOCAL_DB_PATH = Path.home() / ".cosenseus" / "cosenseus_local.db"
 LOCAL_DB_URL = f"sqlite:///{LOCAL_DB_PATH}"
 
 # Ensure the local_data directory exists
@@ -26,7 +26,7 @@ local_engine = create_engine(
     LOCAL_DB_URL,
     connect_args={
         "check_same_thread": False,  # Required for SQLite
-        "timeout": 30,  # 30 second timeout for database operations
+        "timeout": 60,  # 60 second timeout for better network reliability
     },
     echo=False,  # Set to True for SQL query logging
     poolclass=StaticPool,  # Use StaticPool for SQLite single connection

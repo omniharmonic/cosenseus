@@ -1,6 +1,23 @@
 // API service for connecting to the local backend
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+// Dynamically determine the API base URL based on current host
+function getApiBaseUrl(): string {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In browser environment, use the current hostname with backend port
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    return `${protocol}//${hostname}:8000/api/v1`;
+  }
+  
+  // Fallback for server-side rendering or edge cases
+  return 'http://localhost:8000/api/v1';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 interface ApiResponse<T> {
   data?: T;
