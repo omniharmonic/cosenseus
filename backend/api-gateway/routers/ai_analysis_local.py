@@ -502,14 +502,16 @@ async def regenerate_synthesis_prompts(
             synthesis.updated_at = datetime.now(timezone.utc)
             
             # Store regeneration history
-            if not hasattr(synthesis, 'prompt_history'):
+            if synthesis.prompt_history is None:
                 synthesis.prompt_history = []
-            
-            synthesis.prompt_history.append({
+
+            current_history = synthesis.prompt_history.copy() if synthesis.prompt_history else []
+            current_history.append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "prompts": original_prompts,
-                "regeneration_count": len(synthesis.prompt_history) + 1
+                "regeneration_count": len(current_history) + 1
             })
+            synthesis.prompt_history = current_history
             
             db.commit()
             db.refresh(synthesis)
@@ -596,7 +598,7 @@ async def regenerate_individual_prompt(
             "moderate": 0.7,
             "creative": 0.9
         }
-        temperature = temperature_map.get(request.creativity, 0.7)
+        temperature = temperature_map.get(request.creativity_level, 0.7)
 
         # Build additional instructions for individual prompt
         additional_instructions = []
@@ -652,21 +654,20 @@ async def regenerate_individual_prompt(
                 synthesis.updated_at = datetime.now(timezone.utc)
                 
                 # Track the regeneration
-                if not synthesis.regeneration_history:
-                    synthesis.regeneration_history = []
-                
-                synthesis.regeneration_history.append({
+                current_regen_history = synthesis.regeneration_history.copy() if synthesis.regeneration_history else []
+                current_regen_history.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "type": "individual_prompt",
                     "prompt_index": prompt_index,
                     "user_id": current_user.get("user_id"),
                     "parameters": {
-                        "creativity": request.creativity,
+                        "creativity_level": request.creativity_level,
                         "tone": request.tone,
                         "length": request.length,
                         "focus_areas": request.focus_areas
                     }
                 })
+                synthesis.regeneration_history = current_regen_history
                 
                 db.commit()
                 

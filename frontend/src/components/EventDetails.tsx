@@ -40,6 +40,11 @@ interface EventAnalysis {
     key_themes: string[];
     common_concerns: string[];
     suggested_actions: string[];
+    consensus_points: string[];
+    dialogue_opportunities: string[];
+    common_desired_outcomes: string[];
+    common_strategies: string[];
+    common_values: string[];
     participant_sentiment: string;
     summary: string;
   };

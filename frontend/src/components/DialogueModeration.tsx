@@ -21,8 +21,20 @@ interface SynthesisReview {
   event_id: string;
   round_number: number;
   status: string;
+  title?: string;
+  content?: string;
   summary: string;
   next_round_prompts: Prompt[];
+  // Analysis fields from AI
+  key_themes?: string[];
+  consensus_points?: string[];
+  dialogue_opportunities?: string[];
+  consensus_areas?: string[];
+  divergent_perspectives?: string[];
+  nuanced_positions?: string[];
+  common_desired_outcomes?: string[];
+  common_strategies?: string[];
+  common_values?: string[];
   created_at: string;
   updated_at: string | null;
 }

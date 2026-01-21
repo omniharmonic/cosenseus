@@ -118,7 +118,9 @@ class RoundStateResponse(BaseModel):
     current_round: int
     status: str
 
-class SynthesisResponse(BaseModel):
+class SynthesisSummary(BaseModel):
+    """Minimal synthesis summary - for compact listings.
+    Use SynthesisResponse from ai_analysis_local.py for full synthesis data."""
     id: str
     round_number: int
     content: str
