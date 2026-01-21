@@ -3,6 +3,13 @@ import { apiService } from '../services/api';
 import OpinionClusterMap from './OpinionClusterMap';
 import './DialogueRounds.css';
 
+// Debug logging helper - only logs in development when REACT_APP_DEBUG is true
+const debugLog = (...args: any[]) => {
+  if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+    console.log(...args);
+  }
+};
+
 interface Inquiry {
   id: string;
   question_text: string;
@@ -66,24 +73,24 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
     }
   }, []);
 
-  console.log(
-    '[DialogueRounds Render] EventID:', eventId, 
-    '| Status:', roundStatus, 
-    '| Loading:', loading, 
-    '| Error:', error, 
+  debugLog(
+    '[DialogueRounds Render] EventID:', eventId,
+    '| Status:', roundStatus,
+    '| Loading:', loading,
+    '| Error:', error,
     '| Inquiries:', inquiries?.length
   );
 
   // Poll round state - SIMPLIFIED VERSION
   const fetchRoundState = async () => {
     try {
-      console.log('[DialogueRounds fetchRoundState] Fetching state for event:', eventId);
+      debugLog('[DialogueRounds fetchRoundState] Fetching state for event:', eventId);
       const res = await fetch(`/api/v1/events/${eventId}/round-state`);
       if (!res.ok) {
         throw new Error(`Round state fetch failed with status ${res.status}`);
       }
       const data = await res.json();
-      console.log('[DialogueRounds fetchRoundState] API Response:', data);
+      debugLog('[DialogueRounds fetchRoundState] API Response:', data);
       if (data && typeof data.current_round !== 'undefined') {
         setCurrentRound(data.current_round);
         setRoundStatus(data.status);
@@ -94,10 +101,10 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
       console.error('[DialogueRounds fetchRoundState] Error:', err);
       const newErrorCount = consecutiveErrors + 1;
       setConsecutiveErrors(newErrorCount);
-      
+
       if (newErrorCount >= 3) {
         setError('Connection issues detected. Please refresh the page to continue.');
-        console.log('[DialogueRounds] Stopping round state polling due to consecutive errors');
+        debugLog('[DialogueRounds] Stopping round state polling due to consecutive errors');
         return;
       } else {
         // Only set error for user if it's not just a temporary network issue
@@ -152,11 +159,11 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
   const fetchEventData = async () => {
     if (!eventId) return;
     setLoading(true);
-    console.log('[DialogueRounds fetchEventData] Fetching data for event:', eventId);
+    debugLog('[DialogueRounds fetchEventData] Fetching data for event:', eventId);
     try {
       // Fetch event details
       const eventResponse = await apiService.getEvent(eventId);
-      console.log('[DialogueRounds fetchEventData] getEvent response:', eventResponse);
+      debugLog('[DialogueRounds fetchEventData] getEvent response:', eventResponse);
       if (eventResponse.error) {
         setError(eventResponse.error);
         return;
@@ -165,13 +172,13 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
 
       // Fetch inquiries for the event
       const inquiriesResponse = await apiService.getEventInquiries(eventId, currentRound);
-      console.log('[DialogueRounds fetchEventData] getEventInquiries response:', inquiriesResponse);
+      debugLog('[DialogueRounds fetchEventData] getEventInquiries response:', inquiriesResponse);
       if (inquiriesResponse.error) {
         setError(inquiriesResponse.error);
         setIsWaitingForNextRound(false);
         return;
       }
-      
+
       if (currentRound > 1 && (!inquiriesResponse.data || inquiriesResponse.data.length === 0)) {
         setIsWaitingForNextRound(true);
         setInquiries([]);
@@ -182,11 +189,11 @@ const DialogueRounds: React.FC<DialogueRoundsProps> = ({
 
       if (currentRound > 1) {
         const roundResultsResponse = await apiService.getEventRoundResults(eventId, currentRound - 1);
-        console.log('[DialogueRounds fetchEventData] getEventRoundResults response:', roundResultsResponse);
+        debugLog('[DialogueRounds fetchEventData] getEventRoundResults response:', roundResultsResponse);
         if (roundResultsResponse && roundResultsResponse.data) {
           setRoundAnalyses(roundResultsResponse.data as RoundAnalysis[]);
         } else {
-          console.log('No round analyses found:', roundResultsResponse.error);
+          debugLog('No round analyses found:', roundResultsResponse.error);
         }
       }
 

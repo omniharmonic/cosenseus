@@ -245,25 +245,17 @@ Participants: {participant_count} total
 Please provide a comprehensive summary of this civic engagement event."""
         
         ai_summary = ollama_client.generate_response(prompt, system_prompt)
-        
-        # Try to parse JSON from response
-        try:
-            if "{" in ai_summary and "}" in ai_summary:
-                start = ai_summary.find("{")
-                end = ai_summary.rfind("}") + 1
-                json_str = ai_summary[start:end]
-                parsed_summary = json.loads(json_str)
-            else:
-                parsed_summary = {
-                    "event_overview": ai_summary,
-                    "key_insights": [],
-                    "participant_engagement": "Analysis pending",
-                    "recommendations": [],
-                    "next_steps": "Review responses manually"
-                }
-        except json.JSONDecodeError:
-            parsed_summary = {"error": "Failed to parse AI summary response."}
-        
+
+        # Use Ollama client's JSON extraction with proper fallback
+        fallback_summary = {
+            "event_overview": ai_summary if ai_summary else "No summary available",
+            "key_insights": [],
+            "participant_engagement": "Analysis pending",
+            "recommendations": [],
+            "next_steps": "Review responses manually"
+        }
+        parsed_summary = ollama_client._extract_simple_json(ai_summary, fallback_summary)
+
         return {
             "event_id": event_id,
             "summary_data": summary_data,

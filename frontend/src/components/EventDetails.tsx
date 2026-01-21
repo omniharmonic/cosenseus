@@ -101,46 +101,52 @@ const EventDetails: React.FC<EventDetailsProps> = ({
   });
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // DEBUG: Log user and userRole data
+  // Debug logging (only when REACT_APP_DEBUG is enabled)
   useEffect(() => {
-    console.log('🔍 EventDetails Debug Info:');
-    console.log('- user object:', user);
-    console.log('- user.role:', user?.role);
-    console.log('- user.id:', user?.id);
-    console.log('- eventId:', eventId);
-    
-    // Additional debugging: check if event data exists and log organizer info
-    if (event) {
-      console.log('- Event organizer_id:', event.organizer_id || 'No organizer_id in event');
-      console.log('- Event data:', event);
-      console.log('- Is current user organizer?', event.organizer_id === user?.id);
-      console.log('- Is current user admin?', user?.role === 'admin');
+    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+      console.log('🔍 EventDetails Debug Info:');
+      console.log('- user object:', user);
+      console.log('- user.role:', user?.role);
+      console.log('- user.id:', user?.id);
+      console.log('- eventId:', eventId);
+
+      // Additional debugging: check if event data exists and log organizer info
+      if (event) {
+        console.log('- Event organizer_id:', event.organizer_id || 'No organizer_id in event');
+        console.log('- Event data:', event);
+        console.log('- Is current user organizer?', event.organizer_id === user?.id);
+        console.log('- Is current user admin?', user?.role === 'admin');
+      }
     }
   }, [user, eventId, event]);
 
   // Helper function to check if current user is admin/organizer
   const isCurrentUserAdmin = () => {
+    const debugEnabled = process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true';
+
     if (!user || !event) {
-      console.log('❌ No user or event data available');
+      if (debugEnabled) console.log('❌ No user or event data available');
       return false;
     }
-    
+
     // Check 1: Global admin role
     if (user.role === 'admin') {
-      console.log('✅ User is admin via global role');
+      if (debugEnabled) console.log('✅ User is admin via global role');
       return true;
     }
-    
+
     // Check 2: Event organizer
     if (event.organizer_id && event.organizer_id === user.id) {
-      console.log('✅ User is event organizer');
+      if (debugEnabled) console.log('✅ User is event organizer');
       return true;
     }
-    
-    console.log('❌ User is neither admin nor organizer');
-    console.log('- User role:', user.role);
-    console.log('- User ID:', user.id);
-    console.log('- Event organizer_id:', event.organizer_id);
+
+    if (debugEnabled) {
+      console.log('❌ User is neither admin nor organizer');
+      console.log('- User role:', user.role);
+      console.log('- User ID:', user.id);
+      console.log('- Event organizer_id:', event.organizer_id);
+    }
     return false;
   };
 
