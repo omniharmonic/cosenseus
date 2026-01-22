@@ -32,26 +32,98 @@ class OllamaClient:
         # Request management - limit concurrent requests for stability
         self.semaphore = Semaphore(1)  # Only 1 concurrent request for stability
         
+    def _extract_nested_json(self, text: str) -> Optional[str]:
+        """
+        Extract JSON using brace counting for proper nesting at any depth.
+
+        Args:
+            text: Text containing JSON
+
+        Returns:
+            Extracted JSON string or None
+        """
+        start = text.find('{')
+        if start == -1:
+            return None
+
+        depth = 0
+        in_string = False
+        escape_next = False
+
+        for i, char in enumerate(text[start:], start):
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if char == '{':
+                depth += 1
+            elif char == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i+1]
+        return None
+
     def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
         """
         Robust JSON extraction from Ollama response with multiple fallback strategies.
-        
+
         Args:
             response: Raw response text from Ollama
-            
+
         Returns:
             Parsed JSON dict or None if parsing fails
         """
         if not response:
             return None
-            
+
+        stripped = response.strip()
+
+        # Strategy 0: Handle JSON array responses (LLMs sometimes return arrays)
+        if stripped.startswith('['):
+            try:
+                result = json.loads(stripped)
+                if isinstance(result, list) and len(result) > 0:
+                    if isinstance(result[0], dict):
+                        return result[0]  # Return first object from array
+                    return {"items": result}  # Wrap primitive array
+            except json.JSONDecodeError:
+                pass
+
         # Strategy 1: Try to parse the entire response as JSON
         try:
-            return json.loads(response.strip())
+            return json.loads(stripped)
         except json.JSONDecodeError:
             pass
-            
-        # Strategy 2: Extract JSON from response using braces
+
+        # Strategy 2: Extract JSON using proper brace counting (handles deep nesting)
+        try:
+            json_str = self._extract_nested_json(response)
+            if json_str:
+                return json.loads(json_str)
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 3: Extract JSON from markdown code blocks
+        try:
+            # Look for JSON in markdown code blocks (handle both object and array)
+            code_block_match = re.search(r'```(?:json)?\s*([\{\[].*?[\}\]])\s*```', response, re.DOTALL)
+            if code_block_match:
+                block_content = code_block_match.group(1)
+                parsed = json.loads(block_content)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    return parsed[0] if isinstance(parsed[0], dict) else {"items": parsed}
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 4: Simple first/last brace extraction (fallback for malformed responses)
         try:
             start = response.find("{")
             end = response.rfind("}") + 1
@@ -60,24 +132,7 @@ class OllamaClient:
                 return json.loads(json_str)
         except json.JSONDecodeError:
             pass
-            
-        # Strategy 3: Extract JSON from markdown code blocks
-        try:
-            # Look for JSON in markdown code blocks
-            code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
-            if code_block_match:
-                return json.loads(code_block_match.group(1))
-        except json.JSONDecodeError:
-            pass
-            
-        # Strategy 4: Use regex to find JSON-like content
-        try:
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group())
-        except json.JSONDecodeError:
-            pass
-            
+
         # Strategy 5: Try to clean the response and extract JSON
         try:
             # Remove common non-JSON prefixes and suffixes
@@ -86,7 +141,7 @@ class OllamaClient:
             return json.loads(cleaned)
         except json.JSONDecodeError:
             pass
-            
+
         logger.warning(f"Failed to extract JSON from response: {response[:200]}...")
         return None
     
@@ -476,6 +531,11 @@ Please analyze these responses and provide insights."""
                 "key_themes": [],
                 "common_concerns": [],
                 "suggested_actions": [],
+                "consensus_points": [],
+                "dialogue_opportunities": [],
+                "common_desired_outcomes": [],
+                "common_strategies": [],
+                "common_values": [],
                 "participant_sentiment": "neutral",
                 "summary": f"Error in insights generation: {e}"
             }
@@ -548,7 +608,18 @@ Please analyze these round-specific responses and provide insights."""
             return parsed_result
         except Exception as e:
             logger.error(f"Round insights generation failed: {e}")
-            return {"summary": f"Error in round insights generation: {e}"}
+            return {
+                "key_themes": [],
+                "common_concerns": [],
+                "suggested_actions": [],
+                "consensus_points": [],
+                "dialogue_opportunities": [],
+                "common_desired_outcomes": [],
+                "common_strategies": [],
+                "common_values": [],
+                "participant_sentiment": "neutral",
+                "summary": f"Error in round insights generation: {e}"
+            }
 
     def generate_next_inquiries(self, synthesis_summary: str, previous_inquiries: List[str], temperature: float = 0.7) -> List[Dict[str, str]]:
         """

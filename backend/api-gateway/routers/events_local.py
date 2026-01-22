@@ -7,14 +7,20 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
+import logging
 
 from core.database_local import get_local_db
+from core.config import get_settings
 from shared.models.database import Event, Inquiry, TemporaryUser, EventParticipant, EventStatus, EventRound, EventRoundStatus, Synthesis, Response
 from .auth import get_current_user
 from pydantic import BaseModel, Field, field_validator
 # Import the ollama_client
 from nlp_service.ollama_client import ollama_client
 import json
+
+# Configure logger
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -118,7 +124,9 @@ class RoundStateResponse(BaseModel):
     current_round: int
     status: str
 
-class SynthesisResponse(BaseModel):
+class SynthesisSummary(BaseModel):
+    """Minimal synthesis summary - for compact listings.
+    Use SynthesisResponse from ai_analysis_local.py for full synthesis data."""
     id: str
     round_number: int
     content: str
@@ -370,30 +378,30 @@ async def advance_to_next_round(
         from core.database_local import LocalSessionLocal
         local_db = LocalSessionLocal()
         try:
-            print(f"[DEBUG] Starting analysis for event {event_id}")
-            
+            logger.debug(f"Starting analysis for event {event_id}")
+
             # 2. Fetch all necessary data
             event = local_db.query(Event).filter(Event.id == event_id).first()
             if not event:
-                print(f"[ERROR] Event {event_id} not found")
+                logger.error(f"Event {event_id} not found")
                 return
-                
+
             current_round_number = event.current_round
-            print(f"[DEBUG] Analyzing round {current_round_number}")
-            
+            logger.debug(f"Analyzing round {current_round_number}")
+
             inquiries = local_db.query(Inquiry).filter(
                 Inquiry.event_id == event_id,
                 Inquiry.round_number == current_round_number
             ).all()
-            
+
             inquiry_ids = [str(i.id) for i in inquiries]
-            
+
             responses = local_db.query(Response).filter(
                 Response.inquiry_id.in_(inquiry_ids)
             ).all()
 
             if not responses:
-                print(f"No responses for round {current_round_number}, cannot analyze.")
+                logger.info(f"No responses for round {current_round_number}, cannot analyze.")
                 # Update round status to show it's waiting, even if no analysis is done
                 current_round = local_db.query(EventRound).filter_by(event_id=event_id, round_number=current_round_number).first()
                 if current_round:
@@ -401,15 +409,15 @@ async def advance_to_next_round(
                     local_db.commit()
                 return
 
-            print(f"[DEBUG] Found {len(responses)} responses to analyze")
+            logger.debug(f"Found {len(responses)} responses to analyze")
 
             # 3. Prepare data for Ollama with error handling
             response_data = [{"content": r.content, "inquiry_title": r.inquiry.question_text} for r in responses]
             event_data = {"title": event.title, "description": event.description}
-            
+
             # Try to use Ollama, but fallback to safe analysis if it fails
             try:
-                print(f"[DEBUG] Attempting Ollama analysis...")
+                logger.debug("Attempting Ollama analysis...")
                 # 4. Perform AI analysis to get complete round insights
                 analysis_result = ollama_client.generate_round_insights(event_data, response_data, current_round_number)
                 summary = analysis_result.get("summary", "No summary generated.")
@@ -417,14 +425,14 @@ async def advance_to_next_round(
                 # 5. Generate next set of inquiries based on the summary
                 previous_inquiries = [q.question_text for q in inquiries]
                 next_prompts = ollama_client.generate_next_inquiries(summary, previous_inquiries)
-                print(f"[DEBUG] Ollama analysis successful")
-                
+                logger.debug("Ollama analysis successful")
+
             except Exception as ollama_error:
-                print(f"[WARNING] Ollama analysis failed: {ollama_error}")
-                print(f"[DEBUG] Using fallback analysis...")
+                logger.warning(f"Ollama analysis failed: {ollama_error}")
+                logger.debug("Using fallback analysis...")
                 # Fallback to safe analysis if Ollama fails
                 summary = f"Analysis of {len(responses)} responses for round {current_round_number}. Key themes include participant engagement and diverse perspectives."
-                
+
                 analysis_result = {
                     "summary": summary,
                     "key_themes": ["Community engagement", "Diverse perspectives", "Collaborative solutions"],
@@ -435,14 +443,14 @@ async def advance_to_next_round(
                     "common_strategies": ["Collaborative approach", "Evidence-based planning"],
                     "common_values": ["Transparency", "Inclusivity", "Effectiveness"]
                 }
-                
+
                 # Simple fallback prompts
                 next_prompts = [
                     {"title": "Implementation Planning", "content": "Based on the themes identified, what specific steps should we take to move forward?"},
                     {"title": "Resource Considerations", "content": "What resources or support would be needed to implement the proposed solutions?"}
                 ]
-            
-            print(f"[DEBUG] Generated analysis with {len(analysis_result.get('key_themes', []))} themes")
+
+            logger.debug(f"Generated analysis with {len(analysis_result.get('key_themes', []))} themes")
 
             # 6. Create and store a new synthesis record for admin review with complete analysis
             synthesis = Synthesis(
@@ -500,10 +508,10 @@ async def advance_to_next_round(
                 current_round.status = EventRoundStatus.COMPLETED
 
             local_db.commit()
-            print(f"[DEBUG] Analysis completed successfully for round {current_round_number}")
+            logger.debug(f"Analysis completed successfully for round {current_round_number}")
 
         except Exception as e:
-            print(f"Error in background task for advancing round: {e}")
+            logger.error(f"Error in background task for advancing round: {e}")
             import traceback
             traceback.print_exc()
             local_db.rollback()

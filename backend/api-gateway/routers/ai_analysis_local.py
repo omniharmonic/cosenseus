@@ -245,25 +245,17 @@ Participants: {participant_count} total
 Please provide a comprehensive summary of this civic engagement event."""
         
         ai_summary = ollama_client.generate_response(prompt, system_prompt)
-        
-        # Try to parse JSON from response
-        try:
-            if "{" in ai_summary and "}" in ai_summary:
-                start = ai_summary.find("{")
-                end = ai_summary.rfind("}") + 1
-                json_str = ai_summary[start:end]
-                parsed_summary = json.loads(json_str)
-            else:
-                parsed_summary = {
-                    "event_overview": ai_summary,
-                    "key_insights": [],
-                    "participant_engagement": "Analysis pending",
-                    "recommendations": [],
-                    "next_steps": "Review responses manually"
-                }
-        except json.JSONDecodeError:
-            parsed_summary = {"error": "Failed to parse AI summary response."}
-        
+
+        # Use Ollama client's JSON extraction with proper fallback
+        fallback_summary = {
+            "event_overview": ai_summary if ai_summary else "No summary available",
+            "key_insights": [],
+            "participant_engagement": "Analysis pending",
+            "recommendations": [],
+            "next_steps": "Review responses manually"
+        }
+        parsed_summary = ollama_client._extract_simple_json(ai_summary, fallback_summary)
+
         return {
             "event_id": event_id,
             "summary_data": summary_data,
@@ -502,14 +494,16 @@ async def regenerate_synthesis_prompts(
             synthesis.updated_at = datetime.now(timezone.utc)
             
             # Store regeneration history
-            if not hasattr(synthesis, 'prompt_history'):
+            if synthesis.prompt_history is None:
                 synthesis.prompt_history = []
-            
-            synthesis.prompt_history.append({
+
+            current_history = synthesis.prompt_history.copy() if synthesis.prompt_history else []
+            current_history.append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "prompts": original_prompts,
-                "regeneration_count": len(synthesis.prompt_history) + 1
+                "regeneration_count": len(current_history) + 1
             })
+            synthesis.prompt_history = current_history
             
             db.commit()
             db.refresh(synthesis)
@@ -596,7 +590,7 @@ async def regenerate_individual_prompt(
             "moderate": 0.7,
             "creative": 0.9
         }
-        temperature = temperature_map.get(request.creativity, 0.7)
+        temperature = temperature_map.get(request.creativity_level, 0.7)
 
         # Build additional instructions for individual prompt
         additional_instructions = []
@@ -652,21 +646,20 @@ async def regenerate_individual_prompt(
                 synthesis.updated_at = datetime.now(timezone.utc)
                 
                 # Track the regeneration
-                if not synthesis.regeneration_history:
-                    synthesis.regeneration_history = []
-                
-                synthesis.regeneration_history.append({
+                current_regen_history = synthesis.regeneration_history.copy() if synthesis.regeneration_history else []
+                current_regen_history.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "type": "individual_prompt",
                     "prompt_index": prompt_index,
                     "user_id": current_user.get("user_id"),
                     "parameters": {
-                        "creativity": request.creativity,
+                        "creativity_level": request.creativity_level,
                         "tone": request.tone,
                         "length": request.length,
                         "focus_areas": request.focus_areas
                     }
                 })
+                synthesis.regeneration_history = current_regen_history
                 
                 db.commit()
                 

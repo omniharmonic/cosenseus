@@ -236,11 +236,13 @@ const EventDetailsRoute: React.FC = () => {
 
   if (!eventId) return <Navigate to="/events" />;
 
-  // DEBUG: Log user authentication state in EventDetailsRoute
-  console.log('🔍 EventDetailsRoute Debug:');
-  console.log('- user object:', user);
-  console.log('- user.role:', user?.role);
-  console.log('- user.id:', user?.id);
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+    console.log('🔍 EventDetailsRoute Debug:');
+    console.log('- user object:', user);
+    console.log('- user.role:', user?.role);
+    console.log('- user.id:', user?.id);
+  }
 
   const handleNavigateToParticipate = (eventId: string) => {
     navigate(`/participate/${eventId}`);
